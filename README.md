@@ -1,6 +1,6 @@
 # predtimechart
 
-A JavaScript (ES6 ECMAScript) module for infectious disease forecast visualization.
+A JavaScript (ES6 ECMAScript) module for forecast visualization.
 
 # intro
 
