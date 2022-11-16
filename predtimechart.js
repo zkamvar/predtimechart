@@ -49,7 +49,7 @@ function _createUIElements($componentDiv) {
     //
     // make $optionsDiv (left column)
     //
-    const $optionsDiv = $('<div class="col-md-3"></div>');
+    const $optionsDiv = $('<div class="col-md-3" id="forecastViz_options"></div>');
 
     // add Outcome, Unit, and Interval selects (form)
     const $outcomeFormRow = $(
@@ -104,7 +104,7 @@ function _createUIElements($componentDiv) {
     //
     // make $vizDiv (right column)
     //
-    const $vizDiv = $('<div class="col-md-9"></div>');
+    const $vizDiv = $('<div class="col-md-9" id="forecastViz_viz"></div>');
     const $buttonsDiv = $(
         '<div class="container">\n' +
         '    <div class="col-md-12 text-center">\n' +
@@ -114,7 +114,7 @@ function _createUIElements($componentDiv) {
         '</div>'
     );
     $vizDiv.append($('<p class="forecastViz_disclaimer"><b><span id="disclaimer">{xx_disclaimer}</span></b></p>'));
-    $vizDiv.append($('<div id="ploty_div"></div>'));
+    $vizDiv.append($('<div id="ploty_div" style="width: 100%; height: 72vh; position: relative;"></div>'));
     $vizDiv.append($buttonsDiv);
     $vizDiv.append($('<p style="text-align:center"><small>Note: You can navigate to forecasts from previous weeks with the left and right arrow keys</small></p>'));
 
@@ -132,6 +132,8 @@ function _createUIElements($componentDiv) {
 
 // this implements a straightforward SPA with state - based on https://dev.to/vijaypushkin/dead-simple-state-management-in-vanilla-javascript-24p0
 const App = {
+
+    isIndicateRedraw: false,  // true if app should set plot opacity when loading data
 
     //
     // the app's state
@@ -475,12 +477,16 @@ const App = {
             }
             console.log(`fetchDataUpdatePlot(${isFetchFirst}, ${isFetchCurrentTruth}): waiting on promises`);
             const $plotyDiv = $('#ploty_div');
-            $plotyDiv.fadeTo(0, 0.25);
+            if (this.isIndicateRedraw) {
+                $plotyDiv.fadeTo(0, 0.25);
+            }
             Promise.all(promises).then((values) => {
                 console.log(`fetchDataUpdatePlot(${isFetchFirst}, ${isFetchCurrentTruth}): Promise.all() done. updating plot`, values);
                 this.updateModelsList();
                 this.updatePlot();
-                $plotyDiv.fadeTo(0, 1.0);
+                if (this.isIndicateRedraw) {
+                    $plotyDiv.fadeTo(0, 1.0);
+                }
             });
         } else {
             console.log(`fetchDataUpdatePlot(${isFetchFirst}, ${isFetchCurrentTruth}): updating plot`);
@@ -489,28 +495,31 @@ const App = {
         }
     },
     fetchCurrentTruth() {
-        return App._fetchData(false,
+        return App._fetchData(false,  // Promise
             App.state.selected_target_var, App.state.selected_unit, App.state.current_date)
             .then(response => response.json())
             .then((data) => {
                 App.state.current_truth = data;
-            });  // Promise
+            })
+            .catch(error => console.log(`fetchCurrentTruth(): error: ${error.message}`));
     },
     fetchAsOfTruth() {
-        return App._fetchData(false,
+        return App._fetchData(false,  // Promise
             App.state.selected_target_var, App.state.selected_unit, App.state.selected_as_of_date)
             .then(response => response.json())
             .then((data) => {
                 App.state.as_of_truth = data;
-            });  // Promise
+            })
+            .catch(error => console.log(`fetchAsOfTruth(): error: ${error.message}`));
     },
     fetchForecasts() {
-        return App._fetchData(true,
+        return App._fetchData(true,  // Promise
             App.state.selected_target_var, App.state.selected_unit, App.state.selected_as_of_date)
-            .then(response => response.json())
+            .then(response => response.json())  // Promise
             .then((data) => {
                 App.state.forecasts = data;
-            });  // Promise
+            })
+            .catch(error => console.log(`fetchForecasts(): error: ${error.message}`));
     },
 
 
