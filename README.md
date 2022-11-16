@@ -84,8 +84,9 @@ The component is initialized by a JavaScript object with the following keys and 
   - 'text': human-readable text
 - 'initial_unit':  `units` `value` key to use for the initial plot
 - 'intervals': `array` of one or more integers between 0 and 100 inclusive, representing percentages (purpose: TBD)
-- 'init_interval': `intervals` value to use for the initial plot
-- 'available_as_ofs': `object` that maps `target_variables` `value` to an `array` of dates that have truth and/or forecasts available
+- 'initial_interval': `intervals` value to use for the initial plot
+- 'available_as_ofs': `object` that maps `target_variables` `value` to an `array` of dates in 'YYYY-MM-DD' format that have truth and/or forecasts available
+- 'initial_as_of': `string` specifying the initial date from 'available_as_ofs' (in 'YYYY-MM-DD' format) to use for the initially-selected _as_of_ date
 - 'current_date':  `available_as_ofs` `value` key to use for the initial plot
 - 'models': `array` of model names (`string`s) that provide data
 - 'initial_checked_models': `models` value(s) to use for the initial plot
@@ -118,7 +119,7 @@ Here's a real-world example from the [COVID-19 Forecast Hub](https://covid19fore
   ],
   "initial_unit": "US",
   "intervals": ["0%", "50%", "95%"],
-  "init_interval": "95%",
+  "initial_interval": "95%",
   "available_as_ofs": {
     "day_ahead_cumulative_deaths": [
       "2020-03-15",
@@ -132,6 +133,7 @@ Here's a real-world example from the [COVID-19 Forecast Hub](https://covid19fore
     ],
     "...": "..."
   },
+  "initial_as_of": "2022-10-12",
   "current_date": "2022-10-22",
   "models": [
     "COVIDhub-baseline",

@@ -212,8 +212,8 @@ const App = {
         // save initial selected state
         this.state.selected_target_var = options['initial_target_var'];
         this.state.selected_unit = options['initial_unit'];
-        this.state.selected_interval = options['init_interval'];
-        this.state.selected_as_of_date = options['current_date'];
+        this.state.selected_interval = options['initial_interval'];
+        this.state.selected_as_of_date = options['initial_as_of'];
         // this.state.selected_truth: synchronized via default <input ... checked> setting
         this.state.selected_models = options['initial_checked_models'];
 
