@@ -132,8 +132,6 @@ function _createUIElements($componentDiv) {
 
 // this implements a straightforward SPA with state - based on https://dev.to/vijaypushkin/dead-simple-state-management-in-vanilla-javascript-24p0
 const App = {
-    projectId: -1,  // set by initialize()
-
 
     //
     // the app's state

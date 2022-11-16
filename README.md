@@ -25,7 +25,7 @@ In your HTML file, load the required CSS and JavaScript files:
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap.min.css">
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
 
-<!-- zoltar_viz -->
+<!-- predtimechart -->
 <script src="https://cdn.plot.ly/plotly-2.12.1.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.3/moment.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/reichlab/predtimechart@1.0.0/predtimechart.css">
