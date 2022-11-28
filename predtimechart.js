@@ -481,6 +481,7 @@ const App = {
         }
     },
     fetchCurrentTruth() {
+        App.state.current_truth = [];  // clear in case of error
         return App._fetchData(false,  // Promise
             App.state.selected_target_var, App.state.selected_unit, App.state.current_date)
             .then(response => response.json())
@@ -490,6 +491,7 @@ const App = {
             .catch(error => console.log(`fetchCurrentTruth(): error: ${error.message}`));
     },
     fetchAsOfTruth() {
+        App.state.as_of_truth = [];  // clear in case of error
         return App._fetchData(false,  // Promise
             App.state.selected_target_var, App.state.selected_unit, App.state.selected_as_of_date)
             .then(response => response.json())
@@ -499,6 +501,7 @@ const App = {
             .catch(error => console.log(`fetchAsOfTruth(): error: ${error.message}`));
     },
     fetchForecasts() {
+        App.state.forecasts = {};  // clear in case of error
         return App._fetchData(true,  // Promise
             App.state.selected_target_var, App.state.selected_unit, App.state.selected_as_of_date)
             .then(response => response.json())  // Promise
