@@ -54,13 +54,13 @@ In your HTML file, load the required CSS and JavaScript files:
     const options = {...};
 
     // initialize the component
-    App.initialize('forecastViz_row', _fetchData, options);
+    App.initialize('forecastViz_row', _fetchData, false, options);
 </script>
 ```
 
 # JavaScript API
 
-The component is accessed via the `App` object, and is initialized via the `App.initialize()` function. After that, everything else is taken care of by the app. `App.initialize(componentDiv, _fetchData, options)` takes these args:
+The component is accessed via the `App` object, and is initialized via the `App.initialize()` function. After that, everything else is taken care of by the app. `App.initialize(componentDiv, _fetchData, isIndicateRedraw, options)` takes these args:
 
 - `componentDiv`: `id` of the empty `<div>` to place the component into.
 - `fetchData`: function to retrieve truth and forecast data. It is called whenever the plot needs updating. See the "fetchData data format" section for details. It takes these args:
@@ -68,6 +68,7 @@ The component is accessed via the `App` object, and is initialized via the `App.
     - `targetKey`: `string` naming the target of interest. Must be one of the values in the options object's `target_variables` value.
     - `unitAbbrev`: "" unit "". Must be one of the values in the options object's `units` value.
     - `referenceDate`: "" reference date "". Must be one of the values in the options object's `available_as_ofs` value.
+- `isIndicateRedraw`: `boolean` that controls whether the plot area should be grayed out while waiting for data requests. Useful for applications that have a noticeable delay when fetching data.
 - `options`: `object` that contains initialization data. See the "Options object" section for details.
 
 # Options object

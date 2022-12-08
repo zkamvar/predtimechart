@@ -133,17 +133,19 @@ function _createUIElements($componentDiv) {
 // this implements a straightforward SPA with state - based on https://dev.to/vijaypushkin/dead-simple-state-management-in-vanilla-javascript-24p0
 const App = {
 
+    //
+    // non-options vars passed to `initialize()`
+    //
+
     isIndicateRedraw: false,  // true if app should set plot opacity when loading data
+    _fetchData: null,         // as documented in `initialize()`
+
 
     //
-    // the app's state
+    // app state
     //
 
     state: {
-        // _fetchData that was passed to initialize():
-        _fetchData: null,
-
-
         // Static data, fixed at time of creation:
         target_variables: [],
         units: [],
@@ -154,7 +156,7 @@ const App = {
         initial_checked_models: [],
         disclaimer: "",
 
-        // Dynamic/updated and we need to track: 2 categories:
+        // Dynamic/updated data, used to track 2 categories:
         // 1/2 Tracks UI state:
         selected_target_var: '',
         selected_unit: '',
@@ -179,12 +181,15 @@ const App = {
     /**
      * Toggle visibility of a content tab
      * @param {String} componentDiv - id of a DOM node to populate. it must be an empty Bootstrap 4 row
-     * @param {String} _fetchData - function as documented in forecast-repository/forecast_app/templates/project_viz.html .
-     *                              args: isForecast, targetKey, unitAbbrev, referenceDate
-     * @param {int} options - visualization initialization options as documented at https://docs.zoltardata.com/visualizationoptionspage/
+     * @param {Function} _fetchData - function as documented in forecast-repository/forecast_app/templates/project_viz.html .
+     *   args: isForecast, targetKey, unitAbbrev, referenceDate
+     * @param {Boolean} isIndicateRedraw - controls whether the plot area should be grayed out while waiting for data
+     *   requests
+     * @param {Object} options - visualization initialization options as documented at https://docs.zoltardata.com/visualizationoptionspage/
      */
-    initialize(componentDiv, _fetchData, options) {
+    initialize(componentDiv, _fetchData, isIndicateRedraw, options) {
         App._fetchData = _fetchData;
+        App.isIndicateRedraw = isIndicateRedraw;
         console.log('initialize(): entered', _fetchData);
 
         // save static vars
@@ -464,14 +469,14 @@ const App = {
             }
             console.log(`fetchDataUpdatePlot(${isFetchFirst}, ${isFetchCurrentTruth}, ${isPreserveYLimit}): waiting on promises`);
             const $plotyDiv = $('#ploty_div');
-            if (this.isIndicateRedraw) {
+            if (App.isIndicateRedraw) {
                 $plotyDiv.fadeTo(0, 0.25);
             }
             Promise.all(promises).then((values) => {
                 console.log(`fetchDataUpdatePlot(${isFetchFirst}, ${isFetchCurrentTruth}, ${isPreserveYLimit}): Promise.all() done. updating plot`, values);
                 this.updateModelsList();
                 this.updatePlot(isPreserveYLimit);
-                if (this.isIndicateRedraw) {
+                if (App.isIndicateRedraw) {
                     $plotyDiv.fadeTo(0, 1.0);
                 }
             });
