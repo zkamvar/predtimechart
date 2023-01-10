@@ -670,7 +670,7 @@ const App = {
                 return []
             })
         }
-        pd = pd.concat(...pd0)
+        pd = pd0.concat(...pd)
 
         // add interval polygons
         let pd1 = []
