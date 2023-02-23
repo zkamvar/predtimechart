@@ -167,7 +167,7 @@ Truth data is represented as an `object` with x/y pairs represented as columns, 
 
 ## fetchData forecasts data format
 
-Forecast data is an `object` with one entry for each model in the the options object's `models`, each of which is in turn an `object` with entries for target end date of the forecast and the quantiles required to use to display point predictions and 50% or 95% prediction intervals. For example:
+Forecast data is an `object` with one entry for each model in the options object's `models`, each of which is in turn an `object` with entries for target end date of the forecast and the quantiles required to use to display point predictions and 50% or 95% prediction intervals. For example:
 
 ```json
 {

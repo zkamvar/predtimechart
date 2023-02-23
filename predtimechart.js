@@ -220,7 +220,7 @@ const App = {
         this.state.selected_interval = options['initial_interval'];
         this.state.selected_as_of_date = options['initial_as_of'];
         // this.state.selected_truth: synchronized via default <input ... checked> setting
-        this.state.selected_models = options['initial_checked_models'];
+        this.state.selected_models = options['initial_checked_models'];  // NB: some might have no forecasts - handled by updateModelsList()
 
         // populate UI elements, setting selection state to initial, first validating `componentDiv`
         const componentDivEle = document.getElementById(componentDiv);
@@ -319,6 +319,7 @@ const App = {
                 return !App.state.forecasts.hasOwnProperty(model);
             })
             .forEach(function (model) {
+                App.state.selected_models = App.state.selected_models.filter(item => item !== model)
                 $selectModelDiv.append(_selectModelDiv(model, 'grey', false, false));
             });
 
