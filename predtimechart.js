@@ -9,12 +9,11 @@
 
 // `updateModelsList()` helper
 function _selectModelDiv(model, modelColor, isEnabled, isChecked) {
-    const disabled = isEnabled ? '' : 'disabled="disabled"';
     const checked = isChecked ? 'checked' : '';
     return `<div class="form-group form-check"
                  style="margin-bottom: 0${!isEnabled ? '; color: lightgrey' : ''}">
                 <label>
-                    <input type="checkbox" id="${model}" class="model-check" ${disabled} ${checked}>
+                    <input type="checkbox" id="${model}" class="model-check" ${checked}>
                     &nbsp;${model}
                     &nbsp;<span class="forecastViz_dot" style="background-color: ${modelColor}; "></span>
                 </label>
@@ -153,7 +152,6 @@ const App = {
         available_as_ofs: [],
         current_date: "",
         models: [],
-        initial_checked_models: [],
         disclaimer: "",
 
         // Dynamic/updated data, used to track 2 categories:
@@ -199,7 +197,6 @@ const App = {
         this.state.available_as_ofs = options['available_as_ofs'];
         this.state.current_date = options['current_date'];
         this.state.models = options['models'];
-        this.state.initial_checked_models = options['initial_checked_models'];
         this.state.disclaimer = options['disclaimer'];
         this.state.colors = Array(parseInt(this.state.models.length / 10, 10) + 1).fill([
             '#0d0887',
@@ -319,7 +316,8 @@ const App = {
                 return !App.state.forecasts.hasOwnProperty(model);
             })
             .forEach(function (model) {
-                $selectModelDiv.append(_selectModelDiv(model, 'grey', false, false));
+                const isChecked = (thisState.selected_models.indexOf(model) > -1);
+                $selectModelDiv.append(_selectModelDiv(model, 'grey', false, isChecked));
             });
 
         // re-wire up model checkboxes
