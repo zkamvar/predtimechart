@@ -4,6 +4,185 @@
 
 
 //
+// user ensemble model (UEM) functions
+//
+
+const USER_ENSEMBLE_MODEL = {  // contains all information about the model
+    name: 'User Ensemble',
+    filename: 'human-ensemble-model.csv',  // filename for the #downloadUserEnsemble action
+    models: [],                // list of model names making up current UEM when it was added by addUserEnsembleModel()
+    last_error: null           // Error from last call to _calcUemForecasts()
+}
+
+
+/**
+ * Computes an ensemble model's forecasts based on component models. NB: Assumes inputs are consistent, i.e., every
+ * model in `componentModels` has a key in `forecasts`, and every value in `forecasts` is structured correctly as
+ * documented at https://github.com/reichlab/predtimechart/ , i.e., has these keys: "target_end_date", "q0.025",
+ * "q0.25", "q0.5", "q0.75", and "q0.975". The output has these same keys. Algorithm: Uses mean. Note that this function
+ * throws an Error on invalid inputs.
+ *
+ # @param {Array} componentModels - array of Strings naming the models to create the ensemble from
+ # @param {Object} forecasts - forecasts containing data for componentModels. same format as App.state.forecasts
+ # @return {Object} forecasts - ensemble forecasts. same format as `forecasts`
+ */
+function _calcUemForecasts(componentModels, forecasts) {
+    // validate: all models must have forecast data
+    const modelsWithNoForecasts = [];
+    componentModels.forEach((model) => {
+        if (!Object.hasOwn(forecasts, model)) {
+            modelsWithNoForecasts.push(model);
+        }
+    });
+    if (modelsWithNoForecasts.length !== 0) {
+        throw new Error(`_calcUemForecasts(): some models had no forecast data: ${modelsWithNoForecasts}`);
+    }
+
+    // validate: all forecasts must all have the same target_end_dates (i.e., same number of forecasts for the same
+    // dates). do so by making a set of JSON.stringify() results to do simple array equality (note that that function
+    // does unnecessary work)
+    const targetEndDateSet = new Set(componentModels.map(model => JSON.stringify(forecasts[model]['target_end_date'])));
+    if (targetEndDateSet.size !== 1) {
+        throw new Error(`not all forecasts had the same target_end_dates: ${JSON.stringify([...targetEndDateSet])}`);
+    }
+
+    // iterate over quantiles (keys that begin with 'q0.'), computing the mean and saving in ensembleForecasts.
+    // arbitrarily use first model's quantiles to iterate
+    const firstModelForecasts = forecasts[componentModels[0]];
+    const ensembleForecasts = {'target_end_date': firstModelForecasts['target_end_date']};  // return value. filled next
+    Object.keys(firstModelForecasts).forEach((key) => {
+        if (key.startsWith('q0.')) {  // quantile key, e.g., 'q0.025'
+            const allModelsQuantiles = [];  // filled next
+            componentModels.forEach((model) => {
+                allModelsQuantiles.push(forecasts[model][key]);
+            });
+            ensembleForecasts[key] = _arraysMean(allModelsQuantiles);
+        }
+    });
+
+    // done
+    return ensembleForecasts
+}
+
+
+/**
+ * Calculates an array of the same length as each array in quantileArrays (assumes they are all the same length) whose
+ * elements are the arithmetic mean of the indexed values. For example, if called with these two arrays:
+ * [590.675, 446.981771067711] , [738, 801] -> [mean([590.675, 738]), mean([446.981771067711, 801])]
+ *
+ * @param quantileArrays {array} - an array of numeric arrays, all the same length
+ * @returns {array} - an array that's the arithmetic mean of the indexed values
+ * @private
+ */
+function _arraysMean(quantileArrays) {
+    // check quantileArrays all the same length
+    const lengthSet = new Set(quantileArrays.map(element => element.length));
+    if (lengthSet.size !== 1) {
+        throw new Error(`quantileArrays not all the same length: ${quantileArrays}`);
+    }
+
+    // check all quantileArrays are numbers
+    // todo xx
+
+    const meanArray = [];  // return value. filled next
+    for (let idx = 0; idx < lengthSet.values().next().value; idx++) {  // numQuantiles
+        const meanArrayForIdx = [];  // filled next
+        quantileArrays.forEach((quantileArray) => {
+            meanArrayForIdx.push(quantileArray[idx]);
+        });
+        const mean = _arrayMean(meanArrayForIdx);
+        meanArray.push(mean)
+    }
+
+    // done
+    return meanArray;
+}
+
+
+/**
+ * @param {array} array - an array of numbers
+ * @returns {number} - the mean of `array`'s elements
+ * @private
+ */
+function _arrayMean(array) {
+    // check all are numbers
+    // todo xx
+
+    var total = 0;
+    array.forEach((value) => {
+        total += value;
+    });
+    return total / array.length;
+}
+
+
+// unit test of _calcUemForecasts . todo xx https://www.google.com/search?q=javascript+unit+testing+frameworks
+function test__calcUemForecasts() {
+    console.log('tests: starting');
+
+    const compModelForecasts = {  // from "COVID-19 Forecasts Viz Test" Zoltar project
+        "COVIDhub-baseline": {
+            "target_end_date": ["2022-02-05", "2022-02-12"],
+            "q0.025": [590.675, 446.981771067711],
+            "q0.25": [1089.25, 1003.57023320233],
+            "q0.5": [1212, 1212],
+            "q0.75": [1334.75, 1421.13823138231],
+            "q0.975": [1833.325, 1973.59632346323]
+        },
+        "COVIDhub-ensemble": {
+            "target_end_date": ["2022-02-05", "2022-02-12"],
+            "q0.025": [738, 801],
+            "q0.25": [1111, 1152],
+            "q0.5": [1198, 1321],
+            "q0.75": [1387, 1494],
+            "q0.975": [1727, 1944]
+        }
+    }
+
+    // case: no componentModels
+    try {
+        _calcUemForecasts([], {});
+        console.log("test result: no componentModels: expected error");
+        // todo xx
+    } catch (error) {
+        console.log("test result: no componentModels: ok");
+    }
+
+    // case: model not in forecasts
+    try {
+        _calcUemForecasts(['model'], {});
+        console.log("test result: model not in forecasts: expected error");
+        // todo xx
+    } catch (error) {
+        console.log("test result: model not in forecasts: ok");
+    }
+
+    // case: one componentModels
+    var act_forecasts = _calcUemForecasts(["COVIDhub-baseline"], compModelForecasts);
+    var exp_forecasts = compModelForecasts["COVIDhub-baseline"];
+    console.log('test result: one componentModels', act_forecasts, exp_forecasts);
+    // todo xx
+
+    // case: two componentModels
+    act_forecasts = _calcUemForecasts(Object.keys(compModelForecasts), compModelForecasts);
+    exp_forecasts = {
+        "target_end_date": ["2022-02-05", "2022-02-12"],
+        "q0.025": [664.3375, 623.9908855338555],  // [ (590.675 + 738)/2 , (446.981771067711 + 801)/2 ]
+        "q0.25": [1100.125, 1077.785116601165],
+        "q0.5": [1205, 1266.5],
+        "q0.75": [1360.875, 1457.569115691155],
+        "q0.975": [1780.1625, 1958.798161731615]
+    };
+    console.log('test result: two componentModels', act_forecasts, exp_forecasts);
+    // todo xx
+
+    console.log('tests: done');
+}
+
+window.test__calcUemForecasts = test__calcUemForecasts;
+
+
+//
 // helper functions
 //
 
@@ -32,8 +211,8 @@ function _setSelectedTruths() {
     if (isAsOfTruthChecked) {
         selectedTruths.push('Truth as of');
     }
-    App.state.selected_truth = selectedTruths;
-    App.fetchDataUpdatePlot(false, null, true);
+    this.state.selected_truth = selectedTruths;
+    this.fetchDataUpdatePlot(false, null, true);
 }
 
 
@@ -44,7 +223,7 @@ function _setSelectedTruths() {
  * @param $componentDiv - an empty Bootstrap 4 row (JQuery object)
  * @private
  */
-function _createUIElements($componentDiv) {
+function _createUIElements($componentDiv, isUemEnabled) {
     //
     // make $optionsDiv (left column)
     //
@@ -90,7 +269,24 @@ function _createUIElements($componentDiv) {
     $optionsDiv.append($truthCheckboxesDiv);
 
     // add model list controls
+    var optionsDivActionsDropdown;
+    if (isUemEnabled) {
+        optionsDivActionsDropdown = '<div class="dropdown">\n' +
+            '  <button class="btn btn-sm dropdown-toggle" type="button" id="dropdownMenuButton" style="float: right;" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">\n' +
+            '    Actions\n' +
+            '  </button>\n' +
+            '  <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">\n' +
+            '    <a class="dropdown-item" id="addUserEnsemble" href="#">Add User Ensemble</a>\n' +
+            '    <a class="dropdown-item disabled" id="removeUserEnsemble" href="#">Remove User Ensemble</a>\n' +
+            '    <a class="dropdown-item disabled" id="downloadUserEnsemble" href="#">Download User Ensemble CSV</a>\n' +
+            '    <a class="dropdown-item disabled" id="infoUserEnsemble" href="#">User Ensemble Info...</a>\n' +
+            '  </div>\n' +
+            '</div>\n';
+    } else {
+        optionsDivActionsDropdown = '';
+    }
     $optionsDiv.append($(
+        optionsDivActionsDropdown +
         '<button type="button" class="btn btn-sm rounded-pill" id="forecastViz_shuffle" style="float: right;">\n' +
         '    Shuffle Colours</button>\n' +
         '<label class="forecastViz_label" for="forecastViz_all">Select Models:</label>\n' +
@@ -126,6 +322,30 @@ function _createUIElements($componentDiv) {
 
 
 //
+// saveFile() helper for $("#downloadUserEnsemble").click()
+// - per https://stackoverflow.com/questions/3665115/how-to-create-a-file-in-memory-for-user-to-download-but-not-through-server
+//
+
+function download(content, mimeType, filename) {
+    if (window.navigator.msSaveOrOpenBlob) {
+        window.navigator.msSaveOrOpenBlob(blob, filename);
+    } else {
+        const a = document.createElement('a')
+        document.body.appendChild(a);
+        const blob = new Blob([content], {type: mimeType}) // Create a blob (file-like object)
+        const url = URL.createObjectURL(blob)
+        a.setAttribute('href', url)
+        a.setAttribute('download', filename)
+        a.click()  // Start downloading
+        setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }, 0)
+    }
+}
+
+
+//
 // App
 //
 
@@ -138,6 +358,9 @@ const App = {
 
     isIndicateRedraw: false,  // true if app should set plot opacity when loading data
     _fetchData: null,         // as documented in `initialize()`
+
+    _calcUemForecasts: null,  // user ensemble model computation function as documented in `initialize()`
+    isUemEnabled: true,       // true if user ensemble model feature is enabled
 
 
     //
@@ -177,18 +400,23 @@ const App = {
     //
 
     /**
-     * Toggle visibility of a content tab
+     * Initialize this app using the passed args.
+     *
      * @param {String} componentDiv - id of a DOM node to populate. it must be an empty Bootstrap 4 row
      * @param {Function} _fetchData - function as documented in forecast-repository/forecast_app/templates/project_viz.html .
      *   args: isForecast, targetKey, unitAbbrev, referenceDate
      * @param {Boolean} isIndicateRedraw - controls whether the plot area should be grayed out while waiting for data
      *   requests
      * @param {Object} options - visualization initialization options as documented at https://docs.zoltardata.com/visualizationoptionspage/
+     * @param {Function} _calcUemForecasts - optional human judgement ensemble model function as documented in forecast-repository/forecast_app/templates/project_viz.html .
+     *   args: componentModels, targetKey, referenceDate. NB: pass null to disable the feature.
      */
-    initialize(componentDiv, _fetchData, isIndicateRedraw, options) {
-        App._fetchData = _fetchData;
-        App.isIndicateRedraw = isIndicateRedraw;
-        console.log('initialize(): entered', _fetchData);
+    initialize(componentDiv, _fetchData, isIndicateRedraw, options, _calcUemForecasts) {
+        this._fetchData = _fetchData;
+        this.isIndicateRedraw = isIndicateRedraw;
+        this._calcUemForecasts = _calcUemForecasts;
+
+        console.debug('initialize(): entered', componentDiv, _fetchData, isIndicateRedraw, options, _calcUemForecasts);
 
         // save static vars
         this.state.target_variables = options['target_variables'];
@@ -225,9 +453,16 @@ const App = {
             throw `componentDiv DOM node not found: '${componentDiv}'`;
         }
 
+        // disable human judgement ensemble model feature if inputs are invalid
+        if ((typeof(_calcUemForecasts) != 'function') || (this.state.models.includes(USER_ENSEMBLE_MODEL.name))) {
+            console.warn('disabling human judgement ensemble model feature', _calcUemForecasts,
+                typeof(_calcUemForecasts), USER_ENSEMBLE_MODEL.name, this.state.models);
+            this.isUemEnabled = false;
+        }
+
         console.log('initialize(): initializing UI');
         const $componentDiv = $(componentDivEle);
-        _createUIElements($componentDiv);
+        _createUIElements($componentDiv, this.isUemEnabled);
         this.initializeUI();
 
         // wire up UI controls (event handlers)
@@ -353,6 +588,49 @@ const App = {
             App.updatePlot(true);
         });
 
+        // User Ensemble Model Actions dropdown button. NB: these will not be created by initialize() if !isUemEnabled,
+        // but JQuery will not error if they don't exist :-)
+        $("#addUserEnsemble").click(function (event) {
+            console.debug("addUserEnsemble click", App.state.selected_models);
+            event.preventDefault();
+            App.removeUserEnsembleModel();
+            App.addUserEnsembleModel();
+            App.updateModelsList();
+            App.updatePlot(true);
+            $("#removeUserEnsemble").removeClass('disabled');    // enable
+            $("#downloadUserEnsemble").removeClass('disabled');  // ""
+            $("#infoUserEnsemble").removeClass('disabled');      // ""
+        });
+        $("#removeUserEnsemble").click(function (event) {
+            console.debug("removeUserEnsemble click");
+            event.preventDefault();
+            App.removeUserEnsembleModel();
+            App.updateModelsList();
+            App.updatePlot(true);
+            $("#removeUserEnsemble").addClass('disabled');
+            $("#downloadUserEnsemble").addClass('disabled');
+            $("#infoUserEnsemble").addClass('disabled');
+        });
+        $("#downloadUserEnsemble").click(function (event) {
+            console.debug("#downloadUserEnsemble click", USER_ENSEMBLE_MODEL.models, App.state.selected_target_var, App.state.selected_as_of_date);
+            event.preventDefault();
+            App._calcUemForecasts(USER_ENSEMBLE_MODEL.models, App.state.selected_target_var, App.state.selected_as_of_date)  // Promise
+                .then(response => response.text())
+                .then((text) => {
+                    console.debug("#downloadUserEnsemble click: data", typeof(text));
+                    download(text, 'text/csv', 'human-ensemble-model.csv');
+                    console.debug("download() done");
+                    alert(`user ensemble downloaded to "${USER_ENSEMBLE_MODEL.filename}"`);
+                })
+                .catch(error => console.log(`#downloadUserEnsemble click: error: ${error.message}`));
+        });
+        $("#infoUserEnsemble").click(function (event) {
+            console.debug("infoUserEnsemble click");
+            event.preventDefault();
+            alert(`- name: ${USER_ENSEMBLE_MODEL.name}\n- models: ${USER_ENSEMBLE_MODEL.models}\n- last error: ${USER_ENSEMBLE_MODEL.last_error}`);
+            // todo xx
+        });
+
         // "Select Models" checkbox
         $("#forecastViz_all").change(function () {
             const $this = $(this);
@@ -433,7 +711,7 @@ const App = {
 
     // Returns an array of models that are not grayed out.
     selectableModels() {
-        return App.state.models.filter(function (element, index) {
+        return this.state.models.filter(function (element, index) {
             return index < 100;
         });
     },
@@ -467,14 +745,27 @@ const App = {
             }
             console.log(`fetchDataUpdatePlot(${isFetchFirst}, ${isFetchCurrentTruth}, ${isPreserveYLimit}): waiting on promises`);
             const $plotyDiv = $('#ploty_div');
-            if (App.isIndicateRedraw) {
+            if (this.isIndicateRedraw) {
                 $plotyDiv.fadeTo(0, 0.25);
             }
             Promise.all(promises).then((values) => {
                 console.log(`fetchDataUpdatePlot(${isFetchFirst}, ${isFetchCurrentTruth}, ${isPreserveYLimit}): Promise.all() done. updating plot`, values);
+
+                // update user ensemble model if any
+                if (this.isUemEnabled && this.state.models.includes(USER_ENSEMBLE_MODEL.name)) {
+                    try {
+                        this.state.forecasts[USER_ENSEMBLE_MODEL.name] = _calcUemForecasts(USER_ENSEMBLE_MODEL.models, this.state.forecasts);  // replaces if present
+                        USER_ENSEMBLE_MODEL.last_error = null;
+                        console.log('fetchDataUpdatePlot(): forecasts:', this.state.forecasts[USER_ENSEMBLE_MODEL.name]);
+                    } catch (error) {
+                        USER_ENSEMBLE_MODEL.last_error = error;
+                        console.warn(`fetchDataUpdatePlot(): error calling _calcUemForecasts(): ${error}`);
+                    }
+                }
+
                 this.updateModelsList();
                 this.updatePlot(isPreserveYLimit);
-                if (App.isIndicateRedraw) {
+                if (this.isIndicateRedraw) {
                     $plotyDiv.fadeTo(0, 1.0);
                 }
             });
@@ -484,36 +775,87 @@ const App = {
         }
     },
     fetchCurrentTruth() {
-        App.state.current_truth = [];  // clear in case of error
-        return App._fetchData(false,  // Promise
-            App.state.selected_target_var, App.state.selected_unit, App.state.current_date)
+        this.state.current_truth = [];  // clear in case of error
+        return this._fetchData(false,  // Promise
+            this.state.selected_target_var, this.state.selected_unit, this.state.current_date)
             .then(response => response.json())
             .then((data) => {
-                App.state.current_truth = data;
+                this.state.current_truth = data;
             })
             .catch(error => console.log(`fetchCurrentTruth(): error: ${error.message}`));
     },
     fetchAsOfTruth() {
-        App.state.as_of_truth = [];  // clear in case of error
-        return App._fetchData(false,  // Promise
-            App.state.selected_target_var, App.state.selected_unit, App.state.selected_as_of_date)
+        this.state.as_of_truth = [];  // clear in case of error
+        return this._fetchData(false,  // Promise
+            this.state.selected_target_var, this.state.selected_unit, this.state.selected_as_of_date)
             .then(response => response.json())
             .then((data) => {
-                App.state.as_of_truth = data;
+                this.state.as_of_truth = data;
             })
             .catch(error => console.log(`fetchAsOfTruth(): error: ${error.message}`));
     },
     fetchForecasts() {
-        App.state.forecasts = {};  // clear in case of error
-        return App._fetchData(true,  // Promise
-            App.state.selected_target_var, App.state.selected_unit, App.state.selected_as_of_date)
+        this.state.forecasts = {};  // clear in case of error
+        return this._fetchData(true,  // Promise
+            this.state.selected_target_var, this.state.selected_unit, this.state.selected_as_of_date)
             .then(response => response.json())  // Promise
             .then((data) => {
-                App.state.forecasts = data;
+                this.state.forecasts = data;
             })
             .catch(error => console.log(`fetchForecasts(): error: ${error.message}`));
     },
 
+    //
+    // user ensemble model-related functions
+    //
+
+    /**
+     * Creates a user ensemble model (UEM) named USER_ENSEMBLE_MODEL.name using the currently-selected models in
+     * #forecastViz_select_model. Does not call removeUserEnsembleModel() first.
+     */
+    addUserEnsembleModel() {
+        // validate componentModels: there must be at least two
+        const componentModels = this.state.selected_models.filter(function (value) {
+            return value !== USER_ENSEMBLE_MODEL.name;
+        });
+
+        // validation #1
+        if (componentModels.length <= 1) {
+            console.warn(`addUserEnsembleModel(): must select two or more componentModels. #selected=${componentModels.length}`);
+            alert(`must select two or more componentModels. #selected=${componentModels.length}`);  // todo xx how to handle? https://getbootstrap.com/docs/4.0/components/modal/
+            return;
+        }
+
+        try {
+            this.state.forecasts[USER_ENSEMBLE_MODEL.name] = _calcUemForecasts(componentModels, this.state.forecasts);  // replaces if present
+            USER_ENSEMBLE_MODEL.last_error = null;
+            console.log('addUserEnsembleModel(): forecasts:', this.state.forecasts[USER_ENSEMBLE_MODEL.name]);
+        } catch (error) {
+            USER_ENSEMBLE_MODEL.last_error = error;
+            console.warn(`addUserEnsembleModel(): error calling _calcUemForecasts(): ${error}`);
+        }
+
+        if (!this.state.models.includes(USER_ENSEMBLE_MODEL.name)) {
+            this.state.models.unshift(USER_ENSEMBLE_MODEL.name);  // add to front so sorts at top of models list
+        }
+        if (!this.state.selected_models.includes(USER_ENSEMBLE_MODEL.name)) {
+            this.state.selected_models.push(USER_ENSEMBLE_MODEL.name);
+        }
+        USER_ENSEMBLE_MODEL.models.length = 0;  // quick way to clear an array
+        USER_ENSEMBLE_MODEL.models.push(...componentModels);
+        console.log('addUserEnsembleModel(): created:', USER_ENSEMBLE_MODEL.name, USER_ENSEMBLE_MODEL.models);
+    },
+
+    /**
+     * Removes the user ensemble model (UEM) named USER_ENSEMBLE_MODEL.name, if any.
+     */
+    removeUserEnsembleModel() {
+        delete this.state.forecasts[USER_ENSEMBLE_MODEL.name];
+        this.state.models = this.state.models.filter(item => item !== USER_ENSEMBLE_MODEL.name)
+        this.state.selected_models = this.state.selected_models.filter(item => item !== USER_ENSEMBLE_MODEL.name)
+        USER_ENSEMBLE_MODEL.models.length = 0;  // quick way to clear an array
+        USER_ENSEMBLE_MODEL.last_error = null;
+    },
 
     //
     // plot-related functions
