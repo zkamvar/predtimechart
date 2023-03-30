@@ -119,6 +119,7 @@ function _createUIElements($componentDiv, isUemEnabled) {
             '    <a class="dropdown-item disabled" id="removeUserEnsemble" href="#">Remove User Ensemble</a>\n' +
             '    <a class="dropdown-item disabled" id="downloadUserEnsemble" href="#">Download User Ensemble CSV</a>\n' +
             '    <a class="dropdown-item disabled" id="infoUserEnsemble" href="#">User Ensemble Info...</a>\n' +
+            '    <a class="dropdown-item" id="helpUserEnsemble" target="_blank" href="https://github.com/reichlab/predtimechart#human-judgement-ensemble-model">Help...</a>\n' +
             '  </div>\n' +
             '</div>\n';
     } else {
@@ -459,6 +460,8 @@ const App = {
                     console.debug("#downloadUserEnsemble click: data", typeof(text));
                     download(text, 'text/csv', 'human-ensemble-model.csv');
                     console.debug("#downloadUserEnsemble click: download() done");
+
+                    // todo xx use bootstrap:
                     alert(`user ensemble downloaded to "${USER_ENSEMBLE_MODEL.filename}"`);
                 })
                 .catch(error => console.log(`#downloadUserEnsemble click: error: ${error.message}`));
@@ -466,9 +469,19 @@ const App = {
         $("#infoUserEnsemble").click(function (event) {
             console.debug("infoUserEnsemble click");
             event.preventDefault();
+
+            // todo xx more info? use bootstrap:
             alert(`- name: ${USER_ENSEMBLE_MODEL.name}\n- models: ${USER_ENSEMBLE_MODEL.models}\n- last error: ${USER_ENSEMBLE_MODEL.last_error}`);
-            // todo xx
         });
+/*
+        $("#helpUserEnsemble").click(function (event) {
+            console.debug("helpUserEnsemble click");
+            event.preventDefault();
+
+            // todo xx more info? use bootstrap:
+            alert(`- name: ${USER_ENSEMBLE_MODEL.name}\n- models: ${USER_ENSEMBLE_MODEL.models}\n- last error: ${USER_ENSEMBLE_MODEL.last_error}`);
+        });
+*/
 
         // "Select Models" checkbox
         $("#forecastViz_all").change(function () {
@@ -661,7 +674,9 @@ const App = {
         // validation #1
         if (componentModels.length <= 1) {
             console.warn(`addUserEnsembleModel(): must select two or more componentModels. #selected=${componentModels.length}`);
-            alert(`must select two or more componentModels. #selected=${componentModels.length}`);  // todo xx how to handle? https://getbootstrap.com/docs/4.0/components/modal/
+
+            // todo xx use bootstrap
+            alert(`must select two or more componentModels. #selected=${componentModels.length}`);
             return;
         }
 

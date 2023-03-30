@@ -2,6 +2,7 @@
 
 A JavaScript (ES6 ECMAScript) module for forecast visualization.
 
+
 # Steps to use the component
 
 To use the component in your app, you'll need to add the following to your HTML:
@@ -11,6 +12,7 @@ To use the component in your app, you'll need to add the following to your HTML:
 3. add a `<script>` in the `<body>` that initializes the component via the (default) `App` object that's exported
 
 See the "HTML file example" section below for an example, and see the "JavaScript API" section for how to initialize the component.
+
 
 # HTML file example
 
@@ -47,29 +49,35 @@ In your HTML file, load the required CSS and JavaScript files:
     // import the module's entry point (the `App` object)
     import App from 'https://cdn.jsdelivr.net/gh/reichlab/predtimechart@1.0.0/predtimechart.js';
 
-    // set up _fetchData and options
-    function _fetchData(isForecast, targetKey, unitAbbrev, referenceDate) { ...
-    }
+    // set up _fetchData, _calcUemForecasts (optional), and options
+    function _fetchData(isForecast, targetKey, unitAbbrev, referenceDate) { ... }
+
+    function _calcUemForecasts(componentModels, targetKey, referenceDate) { ... }
 
     const options = {...};
 
     // initialize the component
-    App.initialize('forecastViz_row', _fetchData, false, options);
+    App.initialize('forecastViz_row', _fetchData, false, options, _calcUemForecasts);
 </script>
 ```
 
 # JavaScript API
 
-The component is accessed via the `App` object, and is initialized via the `App.initialize()` function. After that, everything else is taken care of by the app. `App.initialize(componentDiv, _fetchData, isIndicateRedraw, options)` takes these args:
+The component is accessed via the `App` object, and is initialized via the `App.initialize()` function. After that, everything else is taken care of by the app. `App.initialize(componentDiv, _fetchData, isIndicateRedraw, options, _calcUemForecasts)` takes these args:
 
 - `componentDiv`: `id` of the empty `<div>` to place the component into.
-- `fetchData`: function to retrieve truth and forecast data. It is called whenever the plot needs updating. See the "fetchData data format" section for details. It takes these args:
+- `_fetchData`: function to retrieve truth and forecast data. It is called whenever the plot needs updating. See the "fetchData data format" section for details. It takes these args:
     - `isForecast`: `boolean` indicating type of data to retrieve. `true` means retrieve forecast data and `false` means get truth data.
     - `targetKey`: `string` naming the target of interest. Must be one of the values in the options object's `target_variables` value.
     - `unitAbbrev`: "" unit "". Must be one of the values in the options object's `units` value.
     - `referenceDate`: "" reference date "". Must be one of the values in the options object's `available_as_ofs` value.
 - `isIndicateRedraw`: `boolean` that controls whether the plot area should be grayed out while waiting for data requests. Useful for applications that have a noticeable delay when fetching data.
 - `options`: `object` that contains initialization data. See the "Options object" section for details.
+- `calcUemForecasts`: optional human judgement ensemble model function. pass null to disable the feature. It takes these args:
+    - `componentModels`: an array of model names, a subset of those in the `options` object (see below).
+    - `targetKey`: same as passed to `_fetchData` above.
+    - `referenceDate`: ""
+
 
 # Options object
 
@@ -204,3 +212,24 @@ npm run
 # or:
 qunit
 ```
+
+
+# Human judgement ensemble model
+
+Predtimechart includes a beta feature that supports creating an ensemble forecast file based on the existing models initialized in the app. These input "component models" are used by the human judgement ensemble model code to calculate forecasts based on those models' data. For now the arithmetic mean is used, but future versions will support other calculations. Note that the feature must be enabled by the predtimechart developer to be available. Otherwise, the "Actions" dropdown menu documented below will not be present.
+
+## Usage
+All interactions with the feature take place using a new "Actions" dropdown menu next to the "Shuffle Colors" button in the left sidebar. The actions are:
+
+- **Add User Ensemble** (always enabled): Creates a new model or replaces the existing one using the currently-selected models as components. Visually, the model works like any other model (shows in the model list and the plot, can be checked/unchecked, re-calculated when changing outcome/unit/reference date, etc.)
+- **Remove User Ensemble** (enabled if model exists): Removes the model from model list.
+- **Download User Ensemble CSV** (enabled ""): Calls the _`calcUemForecasts` function passed to `App.initialize()` (see above) compute and download a cross-unit forecast. The CSV file format is documented [here](https://docs.zoltardata.com/fileformats/#forecast-data-format-csv).
+
+
+A typical Human judgement ensemble model workflow is:
+
+1. Explore the existing models' forecasts to decide which might make good component models.
+1. Select those component models in the models list in the left sidebar under "Select Models".
+1. Select the "Add User Ensemble" item in the "Actions" dropdown menu to add the "User Ensemble" model to the app.
+1. Explore the new model's forecasts and either move to the next step if you're happy with them, or repeat the above steps to try other component models.
+1. Select "Download User Ensemble CSV" in the "Actions" dropdown menu. This will contact the server, which will compute a forecasts for all units in the system, create a CSV file, and send it back to the app. When done, you will see a notification that the file was downloaded and saved.
