@@ -17,8 +17,6 @@ const USER_ENSEMBLE_MODEL = {  // contains all information about the model
     last_error: null           // Error from last call to _calcUemForecasts()
 }
 
-window.uem = USER_ENSEMBLE_MODEL  // todo xx temp
-
 
 //
 // helper functions
@@ -473,15 +471,6 @@ const App = {
             // todo xx more info? use bootstrap:
             alert(`- name: ${USER_ENSEMBLE_MODEL.name}\n- models: ${USER_ENSEMBLE_MODEL.models}\n- last error: ${USER_ENSEMBLE_MODEL.last_error}`);
         });
-/*
-        $("#helpUserEnsemble").click(function (event) {
-            console.debug("helpUserEnsemble click");
-            event.preventDefault();
-
-            // todo xx more info? use bootstrap:
-            alert(`- name: ${USER_ENSEMBLE_MODEL.name}\n- models: ${USER_ENSEMBLE_MODEL.models}\n- last error: ${USER_ENSEMBLE_MODEL.last_error}`);
-        });
-*/
 
         // "Select Models" checkbox
         $("#forecastViz_all").change(function () {
