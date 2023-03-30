@@ -7,6 +7,9 @@
 // user ensemble model (UEM) functions
 //
 
+import _calcUemForecasts from './user-ensemble-model.js';
+
+
 const USER_ENSEMBLE_MODEL = {  // contains all information about the model
     name: 'User Ensemble',
     filename: 'human-ensemble-model.csv',  // filename for the #downloadUserEnsemble action
@@ -14,172 +17,7 @@ const USER_ENSEMBLE_MODEL = {  // contains all information about the model
     last_error: null           // Error from last call to _calcUemForecasts()
 }
 
-
-/**
- * Computes an ensemble model's forecasts based on component models. NB: Assumes inputs are consistent, i.e., every
- * model in `componentModels` has a key in `forecasts`, and every value in `forecasts` is structured correctly as
- * documented at https://github.com/reichlab/predtimechart/ , i.e., has these keys: "target_end_date", "q0.025",
- * "q0.25", "q0.5", "q0.75", and "q0.975". The output has these same keys. Algorithm: Uses mean. Note that this function
- * throws an Error on invalid inputs.
- *
- # @param {Array} componentModels - array of Strings naming the models to create the ensemble from
- # @param {Object} forecasts - forecasts containing data for componentModels. same format as App.state.forecasts
- # @return {Object} forecasts - ensemble forecasts. same format as `forecasts`
- */
-function _calcUemForecasts(componentModels, forecasts) {
-    // validate: all models must have forecast data
-    const modelsWithNoForecasts = [];
-    componentModels.forEach((model) => {
-        if (!Object.hasOwn(forecasts, model)) {
-            modelsWithNoForecasts.push(model);
-        }
-    });
-    if (modelsWithNoForecasts.length !== 0) {
-        throw new Error(`_calcUemForecasts(): some models had no forecast data: ${modelsWithNoForecasts}`);
-    }
-
-    // validate: all forecasts must all have the same target_end_dates (i.e., same number of forecasts for the same
-    // dates). do so by making a set of JSON.stringify() results to do simple array equality (note that that function
-    // does unnecessary work)
-    const targetEndDateSet = new Set(componentModels.map(model => JSON.stringify(forecasts[model]['target_end_date'])));
-    if (targetEndDateSet.size !== 1) {
-        throw new Error(`not all forecasts had the same target_end_dates: ${JSON.stringify([...targetEndDateSet])}`);
-    }
-
-    // iterate over quantiles (keys that begin with 'q0.'), computing the mean and saving in ensembleForecasts.
-    // arbitrarily use first model's quantiles to iterate
-    const firstModelForecasts = forecasts[componentModels[0]];
-    const ensembleForecasts = {'target_end_date': firstModelForecasts['target_end_date']};  // return value. filled next
-    Object.keys(firstModelForecasts).forEach((key) => {
-        if (key.startsWith('q0.')) {  // quantile key, e.g., 'q0.025'
-            const allModelsQuantiles = [];  // filled next
-            componentModels.forEach((model) => {
-                allModelsQuantiles.push(forecasts[model][key]);
-            });
-            ensembleForecasts[key] = _arraysMean(allModelsQuantiles);
-        }
-    });
-
-    // done
-    return ensembleForecasts
-}
-
-
-/**
- * Calculates an array of the same length as each array in quantileArrays (assumes they are all the same length) whose
- * elements are the arithmetic mean of the indexed values. For example, if called with these two arrays:
- * [590.675, 446.981771067711] , [738, 801] -> [mean([590.675, 738]), mean([446.981771067711, 801])]
- *
- * @param quantileArrays {array} - an array of numeric arrays, all the same length
- * @returns {array} - an array that's the arithmetic mean of the indexed values
- * @private
- */
-function _arraysMean(quantileArrays) {
-    // check quantileArrays all the same length
-    const lengthSet = new Set(quantileArrays.map(element => element.length));
-    if (lengthSet.size !== 1) {
-        throw new Error(`quantileArrays not all the same length: ${quantileArrays}`);
-    }
-
-    // check all quantileArrays are numbers
-    // todo xx
-
-    const meanArray = [];  // return value. filled next
-    for (let idx = 0; idx < lengthSet.values().next().value; idx++) {  // numQuantiles
-        const meanArrayForIdx = [];  // filled next
-        quantileArrays.forEach((quantileArray) => {
-            meanArrayForIdx.push(quantileArray[idx]);
-        });
-        const mean = _arrayMean(meanArrayForIdx);
-        meanArray.push(mean)
-    }
-
-    // done
-    return meanArray;
-}
-
-
-/**
- * @param {array} array - an array of numbers
- * @returns {number} - the mean of `array`'s elements
- * @private
- */
-function _arrayMean(array) {
-    // check all are numbers
-    // todo xx
-
-    var total = 0;
-    array.forEach((value) => {
-        total += value;
-    });
-    return total / array.length;
-}
-
-
-// unit test of _calcUemForecasts . todo xx https://www.google.com/search?q=javascript+unit+testing+frameworks
-function test__calcUemForecasts() {
-    console.log('tests: starting');
-
-    const compModelForecasts = {  // from "COVID-19 Forecasts Viz Test" Zoltar project
-        "COVIDhub-baseline": {
-            "target_end_date": ["2022-02-05", "2022-02-12"],
-            "q0.025": [590.675, 446.981771067711],
-            "q0.25": [1089.25, 1003.57023320233],
-            "q0.5": [1212, 1212],
-            "q0.75": [1334.75, 1421.13823138231],
-            "q0.975": [1833.325, 1973.59632346323]
-        },
-        "COVIDhub-ensemble": {
-            "target_end_date": ["2022-02-05", "2022-02-12"],
-            "q0.025": [738, 801],
-            "q0.25": [1111, 1152],
-            "q0.5": [1198, 1321],
-            "q0.75": [1387, 1494],
-            "q0.975": [1727, 1944]
-        }
-    }
-
-    // case: no componentModels
-    try {
-        _calcUemForecasts([], {});
-        console.log("test result: no componentModels: expected error");
-        // todo xx
-    } catch (error) {
-        console.log("test result: no componentModels: ok");
-    }
-
-    // case: model not in forecasts
-    try {
-        _calcUemForecasts(['model'], {});
-        console.log("test result: model not in forecasts: expected error");
-        // todo xx
-    } catch (error) {
-        console.log("test result: model not in forecasts: ok");
-    }
-
-    // case: one componentModels
-    var act_forecasts = _calcUemForecasts(["COVIDhub-baseline"], compModelForecasts);
-    var exp_forecasts = compModelForecasts["COVIDhub-baseline"];
-    console.log('test result: one componentModels', act_forecasts, exp_forecasts);
-    // todo xx
-
-    // case: two componentModels
-    act_forecasts = _calcUemForecasts(Object.keys(compModelForecasts), compModelForecasts);
-    exp_forecasts = {
-        "target_end_date": ["2022-02-05", "2022-02-12"],
-        "q0.025": [664.3375, 623.9908855338555],  // [ (590.675 + 738)/2 , (446.981771067711 + 801)/2 ]
-        "q0.25": [1100.125, 1077.785116601165],
-        "q0.5": [1205, 1266.5],
-        "q0.75": [1360.875, 1457.569115691155],
-        "q0.975": [1780.1625, 1958.798161731615]
-    };
-    console.log('test result: two componentModels', act_forecasts, exp_forecasts);
-    // todo xx
-
-    console.log('tests: done');
-}
-
-window.test__calcUemForecasts = test__calcUemForecasts;
+window.uem = USER_ENSEMBLE_MODEL  // todo xx temp
 
 
 //
@@ -221,6 +59,7 @@ function _setSelectedTruths() {
  * options on left and the plotly plot on the right
  *
  * @param $componentDiv - an empty Bootstrap 4 row (JQuery object)
+ * @param isUemEnabled - true if the Action menu should be added
  * @private
  */
 function _createUIElements($componentDiv, isUemEnabled) {
@@ -619,7 +458,7 @@ const App = {
                 .then((text) => {
                     console.debug("#downloadUserEnsemble click: data", typeof(text));
                     download(text, 'text/csv', 'human-ensemble-model.csv');
-                    console.debug("download() done");
+                    console.debug("#downloadUserEnsemble click: download() done");
                     alert(`user ensemble downloaded to "${USER_ENSEMBLE_MODEL.filename}"`);
                 })
                 .catch(error => console.log(`#downloadUserEnsemble click: error: ${error.message}`));

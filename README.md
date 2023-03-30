@@ -190,3 +190,17 @@ Forecast data is an `object` with one entry for each model in the the options ob
   "...": "..."
 }
 ```
+
+# Running unit tests
+
+We use [QUnit](https://qunitjs.com/) for our unit tests. Either load the page [test.html](test.html) in your browser (automatically runs the tests), or install in npm per [Getting Started](https://qunitjs.com/intro/):
+```bash
+npm install --save-dev qunit
+```
+
+And then run the tests:
+```bash
+npm run
+# or:
+qunit
+```
