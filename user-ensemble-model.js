@@ -26,23 +26,41 @@ function _calcUemForecasts(componentModels, forecasts) {
         throw new Error(`_calcUemForecasts(): some models had no forecast data: ${modelsWithNoForecasts}`);
     }
 
-    // validate: all forecasts must all have the same target_end_dates (i.e., same number of forecasts for the same
-    // dates). do so by making a set of JSON.stringify() results to do simple array equality (note that that function
-    // does unnecessary work)
-    const targetEndDateSet = new Set(componentModels.map(model => JSON.stringify(forecasts[model]['target_end_date'])));
-    if (targetEndDateSet.size !== 1) {
-        throw new Error(`not all forecasts had the same target_end_dates: ${JSON.stringify([...targetEndDateSet])}`);
+    // validate: all forecasts must have the same quantiles
+    const quantilesSet = new Set(componentModels.map(model => JSON.stringify(Object.keys(forecasts[model]))));
+    if (quantilesSet.size !== 1) {
+        throw new Error(`not all forecasts had the same quantiles: ${JSON.stringify([...quantilesSet])}`);
     }
 
+    // validate: forecasts' target_end_dates must have at least one date in common (i.e., the intersection must not be
+    // empty). set intersection per https://stackoverflow.com/questions/55053007/intersection-of-n-sets
+    const target_end_dates_sets = [];  // target_end_date sets, one per model. filled next
+    componentModels.forEach((model) => {
+        target_end_dates_sets.push(new Set(forecasts[model]['target_end_date']));
+    });
+    const target_end_dates_intersect = target_end_dates_sets.reduce((a, b) => new Set([...a].filter(x => b.has(x))));
+    if (target_end_dates_intersect.size === 0) {
+        throw new Error(`_calcUemForecasts(): forecasts had no common target_end_dates`);
+    }
+
+    // compute target_end_date intersection indices for each model
+    const modelToTEDIndices = {};
+    componentModels.forEach((model) => {
+        modelToTEDIndices[model] = [...target_end_dates_intersect].map(
+            (targetEndDate) => forecasts[model]['target_end_date'].indexOf(targetEndDate));
+    });
+
     // iterate over quantiles (keys that begin with 'q0.'), computing the mean and saving in ensembleForecasts.
-    // arbitrarily use first model's quantiles to iterate
+    // NB: assumes all forecasts have the same quantiles.
     const firstModelForecasts = forecasts[componentModels[0]];
-    const ensembleForecasts = {'target_end_date': firstModelForecasts['target_end_date']};  // return value. filled next
+    const ensembleForecasts = {'target_end_date': [...target_end_dates_intersect]};  // return value. filled next
     Object.keys(firstModelForecasts).forEach((key) => {
         if (key.startsWith('q0.')) {  // quantile key, e.g., 'q0.025'
             const allModelsQuantiles = [];  // filled next
             componentModels.forEach((model) => {
-                allModelsQuantiles.push(forecasts[model][key]);
+                const modelForecasts = forecasts[model][key];
+                const indexedModelForecasts = modelToTEDIndices[model].map(i => modelForecasts[i]);
+                allModelsQuantiles.push(indexedModelForecasts);
             });
             ensembleForecasts[key] = _arraysMean(allModelsQuantiles);
         }

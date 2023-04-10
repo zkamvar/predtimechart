@@ -203,6 +203,7 @@ Forecast data is an `object` with one entry for each model in the the options ob
 
 We use [QUnit](https://qunitjs.com/) for our unit tests. Either load the page [test.html](test.html) in your browser (automatically runs the tests), or install in npm per [Getting Started](https://qunitjs.com/intro/):
 ```bash
+cd "<predtimechart repo root>"
 npm install --save-dev qunit
 ```
 
