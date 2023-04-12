@@ -11,10 +11,9 @@ import _calcUemForecasts from './user-ensemble-model.js';
 
 
 const USER_ENSEMBLE_MODEL = {  // contains all information about the model
-    name: 'User Ensemble',
-    filename: 'human-ensemble-model.csv',  // filename for the #downloadUserEnsemble action
-    models: [],                // list of model names making up current UEM when it was added by addUserEnsembleModel()
-    last_error: null           // Error from last call to _calcUemForecasts()
+    name: 'User-Ensemble',  // must be a valid name, e.g., no spaces, commas, etc.
+    models: [],             // list of model names making up current UEM when it was added by addUserEnsembleModel()
+    last_error: null        // Error from last call to _calcUemForecasts()
 }
 
 
@@ -247,7 +246,8 @@ const App = {
      *   requests
      * @param {Object} options - visualization initialization options as documented at https://docs.zoltardata.com/visualizationoptionspage/
      * @param {Function} _calcUemForecasts - optional human judgement ensemble model function as documented in forecast-repository/forecast_app/templates/project_viz.html .
-     *   args: componentModels, targetKey, referenceDate. NB: pass null to disable the feature.
+     *   args: componentModels, targetKey, referenceDate, userModelName. NB: pass null for the function to disable the
+     *   feature.
      */
     initialize(componentDiv, _fetchData, isIndicateRedraw, options, _calcUemForecasts) {
         this._fetchData = _fetchData;
@@ -292,9 +292,9 @@ const App = {
         }
 
         // disable human judgement ensemble model feature if inputs are invalid
-        if ((typeof(_calcUemForecasts) != 'function') || (this.state.models.includes(USER_ENSEMBLE_MODEL.name))) {
+        if ((typeof (_calcUemForecasts) != 'function') || (this.state.models.includes(USER_ENSEMBLE_MODEL.name))) {
             console.warn('disabling human judgement ensemble model feature', _calcUemForecasts,
-                typeof(_calcUemForecasts), USER_ENSEMBLE_MODEL.name, this.state.models);
+                typeof (_calcUemForecasts), USER_ENSEMBLE_MODEL.name, this.state.models);
             this.isUemEnabled = false;
         }
 
@@ -452,23 +452,42 @@ const App = {
         $("#downloadUserEnsemble").click(function (event) {
             console.debug("#downloadUserEnsemble click", USER_ENSEMBLE_MODEL.models, App.state.selected_target_var, App.state.selected_as_of_date);
             event.preventDefault();
-            App._calcUemForecasts(USER_ENSEMBLE_MODEL.models, App.state.selected_target_var, App.state.selected_as_of_date)  // Promise
-                .then(response => response.text())
+            let fileName = '';
+            App._calcUemForecasts(USER_ENSEMBLE_MODEL.models, App.state.selected_target_var, App.state.selected_as_of_date, USER_ENSEMBLE_MODEL.name)  // Promise
+                .then(response => {
+                    if (!response.ok) {
+                        console.error('#downloadUserEnsemble click: bad response', response);
+                        return response.text().then(text => {
+                            throw new Error(text);
+                        })
+                    }
+
+                    // contentDisposition is like: "attachment; filename=\"2022-01-29-User-Ensemble.csv\""
+                    const contentDisposition = Object.fromEntries(response.headers)['content-disposition'];
+                    fileName = contentDisposition.split('"')[1];
+                    return response.text();
+                })
                 .then((text) => {
-                    console.debug("#downloadUserEnsemble click: data", typeof(text));
-                    download(text, 'text/csv', 'human-ensemble-model.csv');
+                    console.debug("#downloadUserEnsemble click: data", typeof (text), fileName);
+                    download(text, 'text/csv', fileName);
                     console.debug("#downloadUserEnsemble click: download() done");
 
                     // todo xx use bootstrap:
-                    alert(`user ensemble downloaded to "${USER_ENSEMBLE_MODEL.filename}"`);
+                    alert(`user ensemble downloaded to "${fileName}"`);
                 })
-                .catch(error => console.log(`#downloadUserEnsemble click: error: ${error.message}`));
+                .catch(error => {  // NB: fetch() does not generate an error for 4__ responses
+                    console.error(`#downloadUserEnsemble click: error: ${error.message}`)
+
+                    // todo xx use bootstrap:
+                    alert(`${error.message}`);
+                });
         });
         $("#infoUserEnsemble").click(function (event) {
             console.debug("infoUserEnsemble click");
             event.preventDefault();
 
-            // todo xx more info? use bootstrap:
+            // todo xx more info?
+            // todo xx use bootstrap:
             alert(`- name: ${USER_ENSEMBLE_MODEL.name}\n- models: ${USER_ENSEMBLE_MODEL.models}\n- last error: ${USER_ENSEMBLE_MODEL.last_error}`);
         });
 
@@ -664,7 +683,7 @@ const App = {
         if (componentModels.length <= 1) {
             console.warn(`addUserEnsembleModel(): must select two or more componentModels. #selected=${componentModels.length}`);
 
-            // todo xx use bootstrap
+            // todo xx use bootstrap:
             alert(`must select two or more componentModels. #selected=${componentModels.length}`);
             return;
         }

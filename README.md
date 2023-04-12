@@ -52,7 +52,7 @@ In your HTML file, load the required CSS and JavaScript files:
     // set up _fetchData, _calcUemForecasts (optional), and options
     function _fetchData(isForecast, targetKey, unitAbbrev, referenceDate) { ... }
 
-    function _calcUemForecasts(componentModels, targetKey, referenceDate) { ... }
+    function _calcUemForecasts(componentModels, targetKey, referenceDate, userModelName) { ... }
 
     const options = {...};
 
@@ -77,6 +77,7 @@ The component is accessed via the `App` object, and is initialized via the `App.
     - `componentModels`: an array of model names, a subset of those in the `options` object (see below).
     - `targetKey`: same as passed to `_fetchData` above.
     - `referenceDate`: ""
+    - `userModelName`: The model's displayed name. Must be a valid name, e.g., no spaces, commas, etc.
 
 
 # Options object
