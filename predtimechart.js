@@ -13,7 +13,7 @@ import _calcUemForecasts from './user-ensemble-model.js';
 const USER_ENSEMBLE_MODEL = {  // contains all information about the model
     name: 'User-Ensemble',  // must be a valid name, e.g., no spaces, commas, etc.
     models: [],             // list of model names making up current UEM when it was added by addUserEnsembleModel()
-    last_error: null        // Error from last call to _calcUemForecasts()
+    lastError: null        // Error from last call to _calcUemForecasts()
 }
 
 
@@ -94,11 +94,11 @@ function _createUIElements($componentDiv, isUemEnabled) {
     const $truthCheckboxesDiv = $(
         '<div class="form-group form-check forecastViz_select_data ">\n' +
         '    <input title="curr truth" type="checkbox" id="forecastViz_Current_Truth" value="Current Truth" checked>\n' +
-        '      &nbsp;<span id="currentTruthDate">Current ({xx_current_date})</span>\n' +
+        '      &nbsp;<span id="currentTruthDate">Current (current truth date here)</span>\n' +
         '      &nbsp;<span class="forecastViz_dot" style="background-color: lightgrey; "></span>\n' +
         '    <br>\n' +
         '    <input title="truth as of" type="checkbox" id="forecastViz_Truth_as_of" value="Truth as of" checked>\n' +
-        '      &nbsp;<span id="asOfTruthDate">As of {xx_as_of_date}</span>\n' +
+        '      &nbsp;<span id="asOfTruthDate">(as of truth date here)</span>\n' +
         '      &nbsp;<span class="forecastViz_dot" style="background-color: black;"></span>\n' +
         '</div>');
     $optionsDiv.append('<div class="pt-md-3">Select Truth Data:</div>');
@@ -145,7 +145,7 @@ function _createUIElements($componentDiv, isUemEnabled) {
         '    </div>\n' +
         '</div>'
     );
-    $vizDiv.append($('<p class="forecastViz_disclaimer"><b><span id="disclaimer">{xx_disclaimer}</span></b></p>'));
+    $vizDiv.append($('<p class="forecastViz_disclaimer"><b><span id="disclaimer">(disclaimer here)</span></b></p>'));
     $vizDiv.append($('<div id="ploty_div" style="width: 100%; height: 72vh; position: relative;"></div>'));
     $vizDiv.append($buttonsDiv);
     $vizDiv.append($('<p style="text-align:center"><small>Note: You can navigate to forecasts from previous weeks with the left and right arrow keys</small></p>'));
@@ -313,6 +313,9 @@ const App = {
         console.log('initialize(): done');
     },
     initializeUI() {
+        // initialize Bootstrap components
+        this.initializeBootstrapComponents();
+
         // populate options and models list (left column)
         this.initializeTargetVarsUI();
         this.initializeUnitsUI();
@@ -331,6 +334,28 @@ const App = {
         const data = []  // data will be update by `updatePlot()`
         const layout = this.getPlotlyLayout();
         Plotly.newPlot(plotyDiv, data, layout, {modeBarButtonsToRemove: ['lasso2d', 'autoScale2d']});
+    },
+    initializeBootstrapComponents() {
+        const $uemInfoModalDiv = $(
+            '<div class="modal fade" id="uemInfoModal" tabIndex="-1" aria-labelledby="uemInfoModalTitle"\n' +
+            '     aria-hidden="true">\n' +
+            '    <div class="modal-dialog">\n' +
+            '        <div class="modal-content">\n' +
+            '            <div class="modal-header">\n' +
+            '                <h5 class="modal-title" id="uemInfoModalTitle">(title here)</h5>\n' +
+            '                <button type="button" class="close" data-dismiss="modal" aria-label="Close">\n' +
+            '                    <span aria-hidden="true">&times;</span>\n' +
+            '                </button>\n' +
+            '            </div>\n' +
+            '            <div class="modal-body" id="uemInfoModalBody">(body here)</div>\n' +
+            '            <div class="modal-footer">\n' +
+            '                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>\n' +
+            '            </div>\n' +
+            '        </div>\n' +
+            '    </div>\n' +
+            '</div>'
+        );
+        $(document.body).append($uemInfoModalDiv);
     },
     initializeTargetVarsUI() {
         // populate the target variable select
@@ -440,7 +465,6 @@ const App = {
             $("#infoUserEnsemble").removeClass('disabled');      // ""
         });
         $("#removeUserEnsemble").click(function (event) {
-            console.debug("removeUserEnsemble click");
             event.preventDefault();
             App.removeUserEnsembleModel();
             App.updateModelsList();
@@ -472,23 +496,46 @@ const App = {
                     download(text, 'text/csv', fileName);
                     console.debug("#downloadUserEnsemble click: download() done");
 
-                    // todo xx use bootstrap:
-                    alert(`user ensemble downloaded to "${fileName}"`);
+                    // configure and show the info modal
+                    $('#uemInfoModalTitle').html('CSV File Downloaded');
+                    $('#uemInfoModalBody').html(`User ensemble downloaded to "${fileName}".`);
+                    $('#uemInfoModal').modal('show');
                 })
                 .catch(error => {  // NB: fetch() does not generate an error for 4__ responses
                     console.error(`#downloadUserEnsemble click: error: ${error.message}`)
 
-                    // todo xx use bootstrap:
-                    alert(`${error.message}`);
+                    // configure and show the info modal
+                    $('#uemInfoModalTitle').html('Error Downloading CVS File');
+                    $('#uemInfoModalBody').html(`"${error.message}"`);
+                    $('#uemInfoModal').modal('show');
                 });
         });
         $("#infoUserEnsemble").click(function (event) {
-            console.debug("infoUserEnsemble click");
             event.preventDefault();
 
-            // todo xx more info?
-            // todo xx use bootstrap:
-            alert(`- name: ${USER_ENSEMBLE_MODEL.name}\n- models: ${USER_ENSEMBLE_MODEL.models}\n- last error: ${USER_ENSEMBLE_MODEL.last_error}`);
+            // configure and show the info modal
+            const modelName = USER_ENSEMBLE_MODEL.name;
+            const componentModels = USER_ENSEMBLE_MODEL.models.join(", ");
+            const lastError = (USER_ENSEMBLE_MODEL.lastError == null) ? '(no errors)' : USER_ENSEMBLE_MODEL.lastError;
+            const $userInfoForm = $(
+                '<form>\n' +
+                '  <div class="form-group">\n' +
+                '    <label for="model-name" class="col-form-label">Model name:</label>\n' +
+                `    <input type="text" class="form-control" id="model-name" readonly value="${modelName}">\n` +
+                '  </div>\n' +
+                '  <div class="form-group">\n' +
+                '    <label for="model-list" class="col-form-label">Component models:</label>\n' +
+                `    <input type="text" class="form-control" id="model-list" readonly value="${componentModels}">\n` +
+                '  </div>\n' +
+                '  <div class="form-group">\n' +
+                '    <label for="last-error" class="col-form-label">Last error:</label>\n' +
+                `    <textarea class="form-control" id="last-error" readonly>${lastError}</textarea>\n` +
+                '  </div>\n' +
+                '</form>'
+            );
+            $('#uemInfoModalTitle').html('User Ensemble Settings');
+            $('#uemInfoModalBody').html($userInfoForm);
+            $('#uemInfoModal').modal('show');
         });
 
         // "Select Models" checkbox
@@ -615,10 +662,10 @@ const App = {
                 if (this.isUemEnabled && this.state.models.includes(USER_ENSEMBLE_MODEL.name)) {
                     try {
                         this.state.forecasts[USER_ENSEMBLE_MODEL.name] = _calcUemForecasts(USER_ENSEMBLE_MODEL.models, this.state.forecasts);  // replaces if present
-                        USER_ENSEMBLE_MODEL.last_error = null;
+                        USER_ENSEMBLE_MODEL.lastError = null;
                         console.log('fetchDataUpdatePlot(): forecasts:', this.state.forecasts[USER_ENSEMBLE_MODEL.name]);
                     } catch (error) {
-                        USER_ENSEMBLE_MODEL.last_error = error;
+                        USER_ENSEMBLE_MODEL.lastError = error;
                         console.warn(`fetchDataUpdatePlot(): error calling _calcUemForecasts(): ${error}`);
                     }
                 }
@@ -690,10 +737,10 @@ const App = {
 
         try {
             this.state.forecasts[USER_ENSEMBLE_MODEL.name] = _calcUemForecasts(componentModels, this.state.forecasts);  // replaces if present
-            USER_ENSEMBLE_MODEL.last_error = null;
+            USER_ENSEMBLE_MODEL.lastError = null;
             console.log('addUserEnsembleModel(): forecasts:', this.state.forecasts[USER_ENSEMBLE_MODEL.name]);
         } catch (error) {
-            USER_ENSEMBLE_MODEL.last_error = error;
+            USER_ENSEMBLE_MODEL.lastError = error;
             console.warn(`addUserEnsembleModel(): error calling _calcUemForecasts(): ${error}`);
         }
 
@@ -716,7 +763,7 @@ const App = {
         this.state.models = this.state.models.filter(item => item !== USER_ENSEMBLE_MODEL.name)
         this.state.selected_models = this.state.selected_models.filter(item => item !== USER_ENSEMBLE_MODEL.name)
         USER_ENSEMBLE_MODEL.models.length = 0;  // quick way to clear an array
-        USER_ENSEMBLE_MODEL.last_error = null;
+        USER_ENSEMBLE_MODEL.lastError = null;
     },
 
     //
