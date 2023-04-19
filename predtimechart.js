@@ -17,6 +17,27 @@ const USER_ENSEMBLE_MODEL = {  // contains all information about the model
 }
 
 
+/**
+ * Updates the user ensemble model's error icon in the models list based on USER_ENSEMBLE_MODEL.lastError .
+ *
+ * @private
+ */
+function _updateUemErrorIcon() {
+    const error = USER_ENSEMBLE_MODEL.lastError;
+    const $modelCheckboxParent = $(`#${USER_ENSEMBLE_MODEL.name}`).parent();  // the <label> - see _selectModelDiv()
+    if (error === null) {
+        $modelCheckboxParent.children('img').remove();
+    } else {
+        const imgSrc = "https://github.githubassets.com/images/icons/emoji/unicode/26a0.png";
+        const $img = $(
+            `<img src="${imgSrc}" title="${error}" alt="${error}"\n` +
+            `    class="align-baseline" style="height: 16px; width: 16px; display: inline-block;" >`
+        );
+        $modelCheckboxParent.after('&nbsp;', $img);
+    }
+}
+
+
 //
 // helper functions
 //
@@ -420,6 +441,9 @@ const App = {
 
         // re-wire up model checkboxes
         this.addModelCheckEventHandler();
+
+        // update the user ensemble model's error icon
+        _updateUemErrorIcon();
     },
     addEventHandlers() {
         // option, unit, and interval selects
@@ -516,7 +540,7 @@ const App = {
             // configure and show the info modal
             const modelName = USER_ENSEMBLE_MODEL.name;
             const componentModels = USER_ENSEMBLE_MODEL.models.join(", ");
-            const lastError = (USER_ENSEMBLE_MODEL.lastError == null) ? '(no errors)' : USER_ENSEMBLE_MODEL.lastError;
+            const lastError = (USER_ENSEMBLE_MODEL.lastError === null) ? '(no errors)' : USER_ENSEMBLE_MODEL.lastError;
             const $userInfoForm = $(
                 '<form>\n' +
                 '  <div class="form-group">\n' +
@@ -730,8 +754,11 @@ const App = {
         if (componentModels.length <= 1) {
             console.warn(`addUserEnsembleModel(): must select two or more componentModels. #selected=${componentModels.length}`);
 
-            // todo xx use bootstrap:
-            alert(`must select two or more componentModels. #selected=${componentModels.length}`);
+            // configure and show the info modal
+            $('#uemInfoModalTitle').html('Invalid Component Models');
+            $('#uemInfoModalBody').html(`Must select two or more componentModels (${componentModels.length} selected).`);
+            $('#uemInfoModal').modal('show');
+
             return;
         }
 
