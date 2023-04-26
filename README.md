@@ -84,23 +84,24 @@ The component is accessed via the `App` object, and is initialized via the `App.
 
 The component is initialized by a JavaScript object with the following keys and values. See the "Example options object" for a detailed example.
 
-- 'target_variables': `array` of `object`s defining the target variables in the data. Each object contains three keys:
+- `target_variables`: `array` of `object`s defining the target variables in the data. Each object contains three keys:
     - 'value': used as the main value that's passed around for the target
     - 'text': human-readable text
     - 'plot_text': plot text (purpose: TBD)
-- 'initial_target_var': `target_variables` `value` key to use for the initial plot
-- 'units': `array` of `object`s defining the units (typically locations) in the data. Each object contains two keys:
-  - 'value': used as the main value that's passed around for the unit
-  - 'text': human-readable text
-- 'initial_unit':  `units` `value` key to use for the initial plot
-- 'intervals': `array` of one or more integers between 0 and 100 inclusive, representing percentages (purpose: TBD)
-- 'initial_interval': `intervals` value to use for the initial plot
-- 'available_as_ofs': `object` that maps `target_variables` `value` to an `array` of dates in 'YYYY-MM-DD' format that have truth and/or forecasts available
-- 'initial_as_of': `string` specifying the initial date from 'available_as_ofs' (in 'YYYY-MM-DD' format) to use for the initially-selected _as_of_ date
-- 'current_date':  `available_as_ofs` `value` key to use for the initial plot
-- 'models': `array` of model names (`string`s) that provide data
-- 'initial_checked_models': `models` value(s) to use for the initial plot
-- 'disclaimer': `string` providing any important information users should know
+- `initial_target_var`: `target_variables` `value` key to use for the initial plot
+- `units`: `array` of `object`s defining the units (typically locations) in the data. Each object contains two keys:
+  - `value`: used as the main value that's passed around for the unit
+  - `text`: human-readable text
+- `initial_unit`:  `units` `value` key to use for the initial plot
+- `intervals`: `array` of one or more integers between 0 and 100 inclusive, representing percentages (purpose: TBD)
+- `initial_interval`: `intervals` value to use for the initial plot
+- `available_as_ofs`: `object` that maps `target_variables` `value` to an `array` of dates in 'YYYY-MM-DD' format that have truth and/or forecasts available
+- `initial_as_of`: `string` specifying the initial date from 'available_as_ofs' (in 'YYYY-MM-DD' format) to use for the initially-selected _as_of_ date
+- `current_date`:  `available_as_ofs` `value` key to use for the initial plot
+- `models`: `array` of model names (`string`s) that provide data
+- `initial_checked_models`: `models` value(s) to use for the initial plot
+- `disclaimer`: `string` providing any important information users should know
+- `initial_xaxis_range`: optional `array` of two dates in 'YYYY-MM-DD' format that specify the initial xaxis range to use. To not initialize the range, either don't pass this key or pass `null` for its value
 
 ## Example options object
 
@@ -176,7 +177,7 @@ Truth data is represented as an `object` with x/y pairs represented as columns, 
 
 ## fetchData forecasts data format
 
-Forecast data is an `object` with one entry for each model in the the options object's `models`, each of which is in turn an `object` with entries for target end date of the forecast and the quantiles required to use to display point predictions and 50% or 95% prediction intervals. For example:
+Forecast data is an `object` with one entry for each model in the options object's `models`, each of which is in turn an `object` with entries for target end date of the forecast and the quantiles required to use to display point predictions and 50% or 95% prediction intervals. For example:
 
 ```json
 {

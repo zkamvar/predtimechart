@@ -245,6 +245,7 @@ const App = {
         selected_models: [],
         last_selected_models: [],  // last manually-selected models. used by "Select Models" checkbox
         colors: [],
+        initial_xaxis_range: null,  // optional initialize() options object key
 
         // 2/2 Data used to create plots:
         current_truth: [],
@@ -297,6 +298,7 @@ const App = {
             '#fdca26',
             '#f0f921'
         ]).flat()
+        this.state.initial_xaxis_range = options.hasOwnProperty('initial_xaxis_range') ? options['initial_xaxis_range'] : null;
 
         // save initial selected state
         this.state.selected_target_var = options['initial_target_var'];
@@ -314,7 +316,7 @@ const App = {
 
         // disable human judgement ensemble model feature if inputs are invalid
         if ((typeof (_calcUemForecasts) != 'function') || (this.state.models.includes(USER_ENSEMBLE_MODEL.name))) {
-            console.warn('disabling human judgement ensemble model feature', _calcUemForecasts,
+            console.log('disabling human judgement ensemble model feature', _calcUemForecasts,
                 typeof (_calcUemForecasts), USER_ENSEMBLE_MODEL.name, this.state.models);
             this.isUemEnabled = false;
         }
@@ -824,6 +826,11 @@ const App = {
         }
         if (isPreserveYLimit && !isYAxisRangeDefault) {
             Plotly.relayout(plotyDiv, 'yaxis.range', currYAxisRange);
+        }
+
+        // optionally handle initial_xaxis_range
+        if (isXAxisRangeDefault && (this.state.initial_xaxis_range != null)) {
+            Plotly.relayout(plotyDiv, 'xaxis.range', this.state.initial_xaxis_range);
         }
     },
     getPlotlyLayout() {

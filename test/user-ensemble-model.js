@@ -2,7 +2,12 @@ import _calcUemForecasts from '../user-ensemble-model.js';
 
 const {test} = QUnit;
 
-// QUnit.module('Group A');
+
+//
+// general tests
+//
+
+QUnit.module('general');
 
 const compModelForecasts = {  // from "COVID-19 Forecasts Viz Test" Zoltar project
     "COVIDhub-baseline": {
@@ -90,6 +95,8 @@ test('different quantiles', assert => {
 //
 // (NB: last combination is N/A: 100% intersection cannot have different lengths)
 //
+
+QUnit.module('target_end_dates');
 
 test('target_end_dates: no intersection, same length', assert => {
     const badForecasts = {
