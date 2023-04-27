@@ -314,11 +314,28 @@ const App = {
             throw `componentDiv DOM node not found: '${componentDiv}'`;
         }
 
-        // disable human judgement ensemble model feature if inputs are invalid
-        if ((typeof (_calcUemForecasts) != 'function') || (this.state.models.includes(USER_ENSEMBLE_MODEL.name))) {
-            console.log('disabling human judgement ensemble model feature', _calcUemForecasts,
-                typeof (_calcUemForecasts), USER_ENSEMBLE_MODEL.name, this.state.models);
+        this.initializeBootstrapComponents(); // done here instead of initializeUI() so below `modal('show')` will work
+
+        // disable human judgement ensemble model feature if requested or if default model name conflict
+        if (typeof (_calcUemForecasts) != 'function') {
+            console.log('disabling human judgement ensemble model feature', _calcUemForecasts, typeof (_calcUemForecasts));
             this.isUemEnabled = false;
+        } else if (this.state.models.includes(USER_ENSEMBLE_MODEL.name)) {
+            // oops: default user ensemble model name is taken. try once to generate a unique one
+            const newUemName = USER_ENSEMBLE_MODEL.name + '_' + Math.floor(Date.now() / 1000);  // timestamp in seconds
+            if (this.state.models.includes(newUemName)) {
+                console.warn('USER_ENSEMBLE_MODEL.name conflict. disabling human judgement ensemble model feature',
+                    USER_ENSEMBLE_MODEL.name, this.state.models);
+
+                // configure and show the info modal
+                $('#uemInfoModalTitle').html('Disabling human judgement ensemble model feature');
+                $('#uemInfoModalBody').html(`The default name '${USER_ENSEMBLE_MODEL.name}' was in the models list.`);
+                $('#uemInfoModal').modal('show');
+            } else {
+                USER_ENSEMBLE_MODEL.name = newUemName;
+                console.warn('USER_ENSEMBLE_MODEL.name conflict. renamed', USER_ENSEMBLE_MODEL.name,
+                    this.state.models, newUemName);
+            }
         }
 
         console.log('initialize(): initializing UI');
@@ -336,9 +353,6 @@ const App = {
         console.log('initialize(): done');
     },
     initializeUI() {
-        // initialize Bootstrap components
-        this.initializeBootstrapComponents();
-
         // populate options and models list (left column)
         this.initializeTargetVarsUI();
         this.initializeUnitsUI();
