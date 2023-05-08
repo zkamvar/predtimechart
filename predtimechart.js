@@ -18,6 +18,28 @@ const USER_ENSEMBLE_MODEL = {  // contains all information about the model
 
 
 /**
+ * Validates modelName
+ *
+ * @param modelName candidate name for USER_ENSEMBLE_MODEL.name
+ * @returns error message if invalid; false if valid: <= 31 chars . letter, number, underscore, or hyphen/dash
+ * @private
+ */
+function _isInvalidUemName(modelName) {
+    if (modelName.length === 0) {
+        return "name is required";
+    } else if (modelName.length > 31) {
+        return "name is more than 31 characters";
+    } else if (App.state.models.includes(modelName)) {
+        return "name already used";
+    } else if (!(/^[a-zA-Z0-9_-]+$/.test(modelName))) {
+        return "name had invalid characters. must be letters, numbers, underscores, or hypens'";
+    } else {
+        return false;  // valid
+    }
+}
+
+
+/**
  * Updates the user ensemble model's error icon in the models list based on USER_ENSEMBLE_MODEL.lastError .
  *
  * @private
@@ -137,6 +159,7 @@ function _createUIElements($componentDiv, isUemEnabled) {
             '    <a class="dropdown-item disabled" id="removeUserEnsemble" href="#">Remove User Ensemble</a>\n' +
             '    <a class="dropdown-item disabled" id="downloadUserEnsemble" href="#">Download User Ensemble CSV</a>\n' +
             '    <a class="dropdown-item disabled" id="infoUserEnsemble" href="#">User Ensemble Info...</a>\n' +
+            '    <a class="dropdown-item" id="editNameUserEnsemble" href="#">Edit User Ensemble Model Name...</a>\n' +
             '    <a class="dropdown-item" id="helpUserEnsemble" target="_blank" href="https://github.com/reichlab/predtimechart#human-judgement-ensemble-model">Help...</a>\n' +
             '  </div>\n' +
             '</div>\n';
@@ -380,9 +403,7 @@ const App = {
             '        <div class="modal-content">\n' +
             '            <div class="modal-header">\n' +
             '                <h5 class="modal-title" id="uemInfoModalTitle">(title here)</h5>\n' +
-            '                <button type="button" class="close" data-dismiss="modal" aria-label="Close">\n' +
-            '                    <span aria-hidden="true">&times;</span>\n' +
-            '                </button>\n' +
+            '                <a class="close" data-dismiss="modal">&times;</a>\n' +
             '            </div>\n' +
             '            <div class="modal-body" id="uemInfoModalBody">(body here)</div>\n' +
             '            <div class="modal-footer">\n' +
@@ -393,6 +414,34 @@ const App = {
             '</div>'
         );
         $(document.body).append($uemInfoModalDiv);
+
+        // form onsubmit trick per https://stackoverflow.com/questions/15239236/bootstrap-modal-dialogs-with-a-single-text-input-field-always-dismiss-on-enter-k
+        const $uemEditModelNameModalDiv = $(
+            '<div class="modal fade" id="uemEditModelNameModal" tabIndex="-1" aria-labelledby="uemInfoModalTitle"\n' +
+            '     aria-hidden="true">\n' +
+            '    <div class="modal-dialog">\n' +
+            '        <div class="modal-content">\n' +
+            '            <div class="modal-header">\n' +
+            '                <h5 class="modal-title" id="uemInfoModalTitle">User Ensemble Model Name</h5>\n' +
+            '                <a class="close" data-dismiss="modal">&times;</a>\n' +
+            '            </div>\n' +
+            '            <div class="modal-body">\n' +
+            '               <form novalidate onsubmit="return false">\n' +
+            '                   <div class="form-group">\n' +
+            '                       <label for="model-name" class="col-form-label">Model name:</label>\n' +
+            '                       <input type="text" class="form-control is-valid" id="uemEditModelName" value="(name here)">\n' +
+            '                       <div class="invalid-feedback hidden">(invalid here)</div>\n' +
+            '                   </div>\n' +
+            '               </form>\n' +
+            '            </div>\n' +
+            '            <div class="modal-footer">\n' +
+            '                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>\n' +
+            '                <button type="button" class="btn btn-primary" data-dismiss="modal" id="uemEditSaveButton">Save</button>\n' +
+            '           </div>\n' +
+            '    </div>\n' +
+            '</div>'
+        );
+        $(document.body).append($uemEditModelNameModalDiv);
     },
     initializeTargetVarsUI() {
         // populate the target variable select
@@ -503,15 +552,17 @@ const App = {
             $("#removeUserEnsemble").removeClass('disabled');    // enable
             $("#downloadUserEnsemble").removeClass('disabled');  // ""
             $("#infoUserEnsemble").removeClass('disabled');      // ""
+            $("#editNameUserEnsemble").addClass('disabled');     // disable
         });
         $("#removeUserEnsemble").click(function (event) {
             event.preventDefault();
             App.removeUserEnsembleModel();
             App.updateModelsList();
             App.updatePlot(true);
-            $("#removeUserEnsemble").addClass('disabled');
-            $("#downloadUserEnsemble").addClass('disabled');
-            $("#infoUserEnsemble").addClass('disabled');
+            $("#removeUserEnsemble").addClass('disabled');       // disable
+            $("#downloadUserEnsemble").addClass('disabled');     // ""
+            $("#infoUserEnsemble").addClass('disabled');         // ""
+            $("#editNameUserEnsemble").removeClass('disabled');  // enable
         });
         $("#downloadUserEnsemble").click(function (event) {
             console.debug("#downloadUserEnsemble click", USER_ENSEMBLE_MODEL.models, App.state.selected_target_var, App.state.selected_as_of_date);
@@ -576,6 +627,38 @@ const App = {
             $('#uemInfoModalTitle').html('User Ensemble Settings');
             $('#uemInfoModalBody').html($userInfoForm);
             $('#uemInfoModal').modal('show');
+        });
+
+        // handle #uemEditModelNameModal activity:
+        $('#uemEditModelName').on('input', function () {
+            // validate model name edit on each keystroke, displaying the result:
+            const modelName = $('#uemEditModelName').val();
+            const isInvalid = _isInvalidUemName(modelName);  // error message if invalid; false if valid
+            const $invalidFeedbackDiv = $('#uemEditModelNameModal .invalid-feedback');
+            const $modelNameInput = $('#uemEditModelNameModal input');
+            if (isInvalid) {
+                $invalidFeedbackDiv.html(isInvalid);
+                $invalidFeedbackDiv.show();
+                $modelNameInput.addClass('is-invalid')
+            } else {
+                $invalidFeedbackDiv.html('');
+                $invalidFeedbackDiv.hide();
+                $modelNameInput.removeClass('is-invalid')
+            }
+        });
+        $("#uemEditSaveButton").click(function () {
+            // save the new name (assumed valid)
+            const newModelName = $("#uemEditModelName").val();
+            USER_ENSEMBLE_MODEL.name = newModelName;
+            console.info(`saved new user ensemble model name: '${newModelName}'`);
+        });
+        $("#editNameUserEnsemble").click(function (event) {
+            event.preventDefault();
+
+            // configure and show the user model name edit modal
+            const modelName = USER_ENSEMBLE_MODEL.name;
+            $("#uemEditModelName").val(modelName);  // initialize name to current
+            $('#uemEditModelNameModal').modal('show');
         });
 
         // "Select Models" checkbox

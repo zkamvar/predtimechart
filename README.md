@@ -219,14 +219,17 @@ qunit
 
 # Human judgement ensemble model
 
-Predtimechart includes a beta feature that supports creating an ensemble forecast file based on the existing models initialized in the app. These input "component models" are used by the human judgement ensemble model code to calculate forecasts based on those models' data. For now the arithmetic mean is used, but future versions will support other calculations. Note that the feature must be enabled by the predtimechart developer to be available. Otherwise, the "Actions" dropdown menu documented below will not be present.
+Predtimechart includes an optionally-enabled beta feature that supports creating an ensemble forecast file based on the existing models initialized in the app. These input "component models" are used by the human judgement ensemble model code to calculate forecasts based on those models' data. For now the arithmetic mean is used, but future versions will support other calculations. Note that the feature must be enabled by the predtimechart developer to be available. Otherwise, the "Actions" dropdown menu documented below will not be present.
 
 ## Usage
-All interactions with the feature take place using a new "Actions" dropdown menu next to the "Shuffle Colors" button in the left sidebar. The actions are:
+All interactions with the feature take place using the "Actions" dropdown menu next to the "Shuffle Colors" button in the left sidebar. (Note that you will not see that dropdown if the feature is disabled.) The actions are:
 
 - **Add User Ensemble** (always enabled): Creates a new model or replaces the existing one using the currently-selected models as components. Visually, the model works like any other model (shows in the model list and the plot, can be checked/unchecked, re-calculated when changing outcome/unit/reference date, etc.)
 - **Remove User Ensemble** (enabled if model exists): Removes the model from model list.
 - **Download User Ensemble CSV** (enabled ""): Calls the _`calcUemForecasts` function passed to `App.initialize()` (see above) compute and download a cross-unit forecast. The CSV file format is documented [here](https://docs.zoltardata.com/fileformats/#forecast-data-format-csv).
+- **User Ensemble Info...** (enabled if model exists): Shows details about the model: The model's name, its component models, and the last error encountered trying to compute the forecasts, if any.
+- **Edit User Ensemble Model Name...** (enabled if model does not exist): Shows a dialog box for renaming the user model from the default. Note: You can only edit the model name when there's no current user ensemble model added. To rename you must first do "Remove User Ensemble" if you've previously added one.
+- **Help...**: Takes you to this page.
 
 
 A typical Human judgement ensemble model workflow is:
