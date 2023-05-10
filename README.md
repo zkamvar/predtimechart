@@ -18,7 +18,7 @@ See the "HTML file example" section below for an example, and see the "JavaScrip
 
 In your HTML file, load the required CSS and JavaScript files:
 
-1. In the `<head>`, load Bootstrap 4 and hub-vis files:
+1. In the `<head>`, load Bootstrap 4 and other required library files:
 
 ```html
 <!-- Bootstrap 4 -->
@@ -26,6 +26,11 @@ In your HTML file, load the required CSS and JavaScript files:
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap.min.css">
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
+
+<!-- https://www.daterangepicker.com/ -->
+<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css"/>
 
 <!-- predtimechart -->
 <script src="https://cdn.plot.ly/plotly-2.12.1.min.js"></script>
@@ -47,7 +52,7 @@ In your HTML file, load the required CSS and JavaScript files:
 
 <script type="module">
     // import the module's entry point (the `App` object)
-    import App from 'https://cdn.jsdelivr.net/gh/reichlab/predtimechart@1.0.0/predtimechart.js';
+    import App from 'https://cdn.jsdelivr.net/gh/reichlab/predtimechart@1.0.6/predtimechart.js';
 
     // set up _fetchData, _calcUemForecasts (optional), and options
     function _fetchData(isForecast, targetKey, unitAbbrev, referenceDate) { ... }
@@ -102,6 +107,7 @@ The component is initialized by a JavaScript object with the following keys and 
 - `initial_checked_models`: `models` value(s) to use for the initial plot
 - `disclaimer`: `string` providing any important information users should know
 - `initial_xaxis_range`: optional `array` of two dates in 'YYYY-MM-DD' format that specify the initial xaxis range to use. To not initialize the range, either don't pass this key or pass `null` for its value
+
 
 ## Example options object
 
@@ -201,6 +207,7 @@ Forecast data is an `object` with one entry for each model in the options object
 }
 ```
 
+
 # Running unit tests
 
 We use [QUnit](https://qunitjs.com/) for our unit tests. Either load the page [test.html](test.html) in your browser (automatically runs the tests), or install in npm per [Getting Started](https://qunitjs.com/intro/):
@@ -217,9 +224,25 @@ qunit
 ```
 
 
+# Overall usage and features
+
+TBC
+
+
+## Jump to as_of date
+
+To jump to a specific "as of" date (i.e., reference date), use the calendar icon in the plot's _modebar_, which is located in the top right of the plot. This strip of gray icons is shown by hovering over the chart. (See the below screenshot for an example.) Clicking the icon will pop up a date picker where you can navigate to a date and then click "Apply" to set it as the current "as of" date. Note that the year select box above calendar is constrained to the current target's data date range. Because not every calendar data has a corresponding "as of" date, picking a date that corresponds to the currently-set "as of" date will not update the display.
+
+
+## Screenshot
+
+![screenshot](docs/screenshot.png)
+
+
 # Human judgement ensemble model
 
 Predtimechart includes an optionally-enabled beta feature that supports creating an ensemble forecast file based on the existing models initialized in the app. These input "component models" are used by the human judgement ensemble model code to calculate forecasts based on those models' data. For now the arithmetic mean is used, but future versions will support other calculations. Note that the feature must be enabled by the predtimechart developer to be available. Otherwise, the "Actions" dropdown menu documented below will not be present.
+
 
 ## Usage
 All interactions with the feature take place using the "Actions" dropdown menu next to the "Shuffle Colors" button in the left sidebar. (Note that you will not see that dropdown if the feature is disabled.) The actions are:

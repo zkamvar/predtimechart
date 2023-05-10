@@ -2,13 +2,13 @@
  * predtimechart: A JavaScript (ES6 ECMAScript) module for forecast visualization.
  */
 
+import {closestYear} from "./utils.js";
+import _calcUemForecasts from './user-ensemble-model.js';
+
 
 //
 // user ensemble model (UEM) functions
 //
-
-import _calcUemForecasts from './user-ensemble-model.js';
-
 
 const USER_ENSEMBLE_MODEL = {  // contains all information about the model
     name: 'User-Ensemble',  // must be a valid name, e.g., no spaces, commas, etc.
@@ -393,7 +393,42 @@ const App = {
         const plotyDiv = document.getElementById('ploty_div');
         const data = []  // data will be update by `updatePlot()`
         const layout = this.getPlotlyLayout();
-        Plotly.newPlot(plotyDiv, data, layout, {modeBarButtonsToRemove: ['lasso2d', 'autoScale2d']});
+        const calendarIcon = {  // https://fontawesome.com/icons/calendar-days?f=classic&s=solid
+            'width': 448,
+            'height': 512,
+            'path': "M128 0c17.7 0 32 14.3 32 32V64H288V32c0-17.7 14.3-32 32-32s32 14.3 32 32V64h48c26.5 0 48 21.5 48 48v48H0V112C0 85.5 21.5 64 48 64H96V32c0-17.7 14.3-32 32-32zM0 192H448V464c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48V192zm64 80v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V272c0-8.8-7.2-16-16-16H80c-8.8 0-16 7.2-16 16zm128 0v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V272c0-8.8-7.2-16-16-16H208c-8.8 0-16 7.2-16 16zm144-16c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V272c0-8.8-7.2-16-16-16H336zM64 400v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V400c0-8.8-7.2-16-16-16H80c-8.8 0-16 7.2-16 16zm144-16c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V400c0-8.8-7.2-16-16-16H208zm112 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V400c0-8.8-7.2-16-16-16H336c-8.8 0-16 7.2-16 16z"
+        };
+        Plotly.newPlot(plotyDiv, data, layout, {
+            modeBarButtonsToRemove: ['lasso2d', 'autoScale2d'],
+            modeBarButtonsToAdd: [{
+                name: 'Jump to As_Of',
+                icon: calendarIcon,
+                click: () => null,  // click (reuqired here) is handled by daterangepicker below
+            }]
+        });
+        this.initializeDateRangePicker();  // b/c jquery binding is apparently lost with any Plotly.*() call
+    },
+    initializeDateRangePicker() {
+        // initialize https://www.daterangepicker.com/ . regarding the jquery selector for the above icon, the svg is:
+        // <a rel="tooltip" class="modebar-btn" data-title="Jump to As_Of" data-attr="my attr" data-val="my val" data-toggle="false" data-gravity="n">
+        const $iconA = $("[data-title='Jump to As_Of']");  // NB: couldn't get this to work: $(".modebar-btn [data-title='Jump to As_Of']");
+        const available_as_ofs = App.state.available_as_ofs[App.state.selected_target_var];
+        $iconA.daterangepicker({
+            singleDatePicker: true,
+            showDropdowns: true,
+            minYear: parseInt(available_as_ofs[0].slice(0, 4)),
+            maxYear: parseInt(available_as_ofs.at(-1).slice(0, 4)),
+        }, function (start, end, label) {
+            const pickedDate = start.format('YYYY-MM-DD');
+            const availableAsOfs = App.state.available_as_ofs[App.state.selected_target_var];
+            const closestAsOf = closestYear(pickedDate, availableAsOfs);
+            console.debug(`initializeDateRangePicker(): pickedDate=${pickedDate}, closestAsOf=${closestAsOf}, selected_as_of_date=${App.state.selected_as_of_date}`);
+            if (closestAsOf !== App.state.selected_as_of_date) {
+                App.state.selected_as_of_date = closestAsOf;
+                App.fetchDataUpdatePlot(true, false, true);
+                App.updateTruthAsOfCheckboxText();
+            }
+        });
     },
     initializeBootstrapComponents() {
         const $uemInfoModalDiv = $(
@@ -929,6 +964,7 @@ const App = {
         if (isXAxisRangeDefault && (this.state.initial_xaxis_range != null)) {
             Plotly.relayout(plotyDiv, 'xaxis.range', this.state.initial_xaxis_range);
         }
+        this.initializeDateRangePicker();  // b/c jquery binding is apparently lost with any Plotly.*() call
     },
     getPlotlyLayout() {
         if (this.state.target_variables.length === 0) {
