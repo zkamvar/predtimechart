@@ -403,7 +403,7 @@ const App = {
             modeBarButtonsToAdd: [{
                 name: 'Jump to As_Of',
                 icon: calendarIcon,
-                click: () => null,  // click (reuqired here) is handled by daterangepicker below
+                click: () => null,  // click (required here) is handled by daterangepicker below
             }]
         });
         this.initializeDateRangePicker();  // b/c jquery binding is apparently lost with any Plotly.*() call
@@ -411,9 +411,9 @@ const App = {
     initializeDateRangePicker() {
         // initialize https://www.daterangepicker.com/ . regarding the jquery selector for the above icon, the svg is:
         // <a rel="tooltip" class="modebar-btn" data-title="Jump to As_Of" data-attr="my attr" data-val="my val" data-toggle="false" data-gravity="n">
-        const $iconA = $("[data-title='Jump to As_Of']");  // NB: couldn't get this to work: $(".modebar-btn [data-title='Jump to As_Of']");
+        const $icon = $("[data-title='Jump to As_Of']");  // NB: couldn't get this to work: $(".modebar-btn [data-title='Jump to As_Of']");
         const available_as_ofs = App.state.available_as_ofs[App.state.selected_target_var];
-        $iconA.daterangepicker({
+        $icon.daterangepicker({
             singleDatePicker: true,
             showDropdowns: true,
             minYear: parseInt(available_as_ofs[0].slice(0, 4)),

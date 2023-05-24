@@ -231,7 +231,7 @@ TBC
 
 ## Jump to as_of date
 
-To jump to a specific "as of" date (i.e., reference date), use the calendar icon in the plot's _modebar_, which is located in the top right of the plot. This strip of gray icons is shown by hovering over the chart. (See the below screenshot for an example.) Clicking the icon will pop up a date picker where you can navigate to a date and then click "Apply" to set it as the current "as of" date. Note that the year select box above calendar is constrained to the current target's data date range. Because not every calendar data has a corresponding "as of" date, picking a date that corresponds to the currently-set "as of" date will not update the display.
+To jump to a specific "as of" date (i.e., reference date), use the calendar icon in the plot's _modebar_, which is located in the top right of the plot. This strip of gray icons is shown by hovering over the chart. (See the below screenshot for an example.) Clicking the icon will pop up a date picker where you can navigate to a date and then click "Apply" to set it as the current "as of" date. Note that the year select box above calendar is constrained to the current target's data date range. Because not every calendar data has a corresponding "as of" date, picking a date that corresponds to the currently-set "as of" date will not update the display. Also note that the picker has counterintuitive behavior around the "today" (blue) date where clicking it does not activate the "Apply" button. A workaround is to click the day before today.
 
 
 ## Screenshot
