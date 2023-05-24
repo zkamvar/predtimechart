@@ -413,22 +413,30 @@ const App = {
         // <a rel="tooltip" class="modebar-btn" data-title="Jump to As_Of" data-attr="my attr" data-val="my val" data-toggle="false" data-gravity="n">
         const $icon = $("[data-title='Jump to As_Of']");  // NB: couldn't get this to work: $(".modebar-btn [data-title='Jump to As_Of']");
         const available_as_ofs = App.state.available_as_ofs[App.state.selected_target_var];
-        $icon.daterangepicker({
+        $icon.daterangepicker({  // we use below 'apply.daterangepicker' instead of a callback to get more control, esp. to receive "today" clicks
             singleDatePicker: true,
             showDropdowns: true,
             minYear: parseInt(available_as_ofs[0].slice(0, 4)),
             maxYear: parseInt(available_as_ofs.at(-1).slice(0, 4)),
-        }, function (start, end, label) {
-            const pickedDate = start.format('YYYY-MM-DD');
+        });
+        $icon.on('apply.daterangepicker', function(ev, picker) {
+            const pickedDate = picker.startDate.format('YYYY-MM-DD');
             const availableAsOfs = App.state.available_as_ofs[App.state.selected_target_var];
             const closestAsOf = closestYear(pickedDate, availableAsOfs);
-            console.debug(`initializeDateRangePicker(): pickedDate=${pickedDate}, closestAsOf=${closestAsOf}, selected_as_of_date=${App.state.selected_as_of_date}`);
+            console.debug(`apply.daterangepicker: pickedDate=${pickedDate}, closestAsOf=${closestAsOf}, selected_as_of_date=${App.state.selected_as_of_date}, diff=${closestAsOf !== App.state.selected_as_of_date}`);
+
+            // reset picked date to today (o/w stays on picked date)
+            picker.setStartDate(new Date());
+            picker.setEndDate(new Date());
+
+            // go to picked date if different from current
             if (closestAsOf !== App.state.selected_as_of_date) {
                 App.state.selected_as_of_date = closestAsOf;
                 App.fetchDataUpdatePlot(true, false, true);
                 App.updateTruthAsOfCheckboxText();
             }
         });
+
     },
     initializeBootstrapComponents() {
         const $uemInfoModalDiv = $(
