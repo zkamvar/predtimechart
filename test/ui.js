@@ -4,10 +4,8 @@ const {test} = QUnit;
 
 
 //
-// options DIV tests
+// an options object to work with
 //
-
-QUnit.module('options DIV');
 
 const covid19ForecastsVizTestOptions = {
     "target_variables": [
@@ -36,15 +34,27 @@ const covid19ForecastsVizTestOptions = {
     "initial_xaxis_range": null
 };
 
+
+//
+// initialize() function placeholders
+//
+
+function _fetchData(...args) {
+}
+
+
+// prevent initialize() from trying to get data
+App.fetchDataUpdatePlot = function (...args) {
+};
+
+
+//
+// options DIV tests
+//
+
+QUnit.module('options DIV');
+
 test('initialize() creates SELECTs', assert => {
-    function _fetchData(...args) {
-    }
-
-    // prevent initialize() from trying to get data
-    App.fetchDataUpdatePlot = function (...args) {
-    };
-
-    // componentDiv, _fetchData, isIndicateRedraw, options, _calcUemForecasts:
     App.initialize('qunit-fixture', _fetchData, true, covid19ForecastsVizTestOptions, null);
 
     // test that options SELECTs were created

@@ -4,6 +4,7 @@
 
 import {closestYear} from "./utils.js";
 import _calcUemForecasts from './user-ensemble-model.js';
+import _validateOptions from './validation.js';
 
 
 //
@@ -301,6 +302,15 @@ const App = {
 
         console.debug('initialize(): entered', componentDiv, _fetchData, isIndicateRedraw, options, _calcUemForecasts);
 
+        // validate componentDiv
+        const componentDivEle = document.getElementById(componentDiv);
+        if (componentDivEle === null) {
+            throw `componentDiv DOM node not found: '${componentDiv}'`;
+        }
+
+        // validate options object
+        _validateOptions(options);
+
         // save static vars
         this.state.target_variables = options['target_variables'];
         this.state.units = options['units'];
@@ -331,12 +341,7 @@ const App = {
         // this.state.selected_truth: synchronized via default <input ... checked> setting
         this.state.selected_models = options['initial_checked_models'];
 
-        // populate UI elements, setting selection state to initial, first validating `componentDiv`
-        const componentDivEle = document.getElementById(componentDiv);
-        if (componentDivEle === null) {
-            throw `componentDiv DOM node not found: '${componentDiv}'`;
-        }
-
+        // populate UI elements, setting selection state to initial
         this.initializeBootstrapComponents(); // done here instead of initializeUI() so below `modal('show')` will work
 
         // disable human judgement ensemble model feature if requested or if default model name conflict
@@ -419,7 +424,7 @@ const App = {
             minYear: parseInt(available_as_ofs[0].slice(0, 4)),
             maxYear: parseInt(available_as_ofs.at(-1).slice(0, 4)),
         });
-        $icon.on('apply.daterangepicker', function(ev, picker) {
+        $icon.on('apply.daterangepicker', function (ev, picker) {
             const pickedDate = picker.startDate.format('YYYY-MM-DD');
             const availableAsOfs = App.state.available_as_ofs[App.state.selected_target_var];
             const closestAsOf = closestYear(pickedDate, availableAsOfs);
