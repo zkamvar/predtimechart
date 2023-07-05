@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/reichlab/predtimechart/blob/main/src/schema.json",
+  "title": "predtimechart options",
+  "description": "predtimechart options object schema",
+  "type": "object",
+  "properties": {
+    "available_as_ofs": {
+      "description": "`object` that maps `target_variables` `value` to an `array` of dates in 'YYYY-MM-DD' format that have truth and/or forecasts available",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": {"type": "string", "format": "date"}
+      }
+    },
+    "current_date": {
+      "description": "`available_as_ofs` `value` key to use for the initial plot",
+      "type": "string",
+      "format": "date"
+    },
+    "disclaimer": {
+      "description": "`string` providing any important information users should know",
+      "type": "string",
+      "minLength": 1
+    },
+    "initial_as_of": {
+      "description": "`string` specifying the initial date from 'available_as_ofs' (in 'YYYY-MM-DD' format) to use for the initially-selected _as_of_ date",
+      "type": "string",
+      "format": "date"
+    },
+    "initial_checked_models": {
+      "description": "`models` value(s) to use for the initial plot",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "initial_interval": {
+      "description": "`intervals` value to use for the initial plot",
+      "type": "string"
+    },
+    "initial_target_var": {
+      "description": "`target_variables` `value` key to use for the initial plot",
+      "type": "string"
+    },
+    "initial_unit": {
+      "description": "`units` `value` key to use for the initial plot",
+      "type": "string"
+    },
+    "initial_xaxis_range": {
+      "description": "optional `array` of two dates in 'YYYY-MM-DD' format that specify the initial xaxis range to use. To not initialize the range, either don't pass this key or pass `null` for its value",
+      "type": ["array", "null"],
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {"type": "string", "format": "date"}
+    },
+    "intervals": {
+      "description": "`array` of one or more strings of the format '<integer>%' between '0%' and '100%' inclusive, representing percentages. Currently only '50%' and '95%' are used (purpose: TBD)",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[1-9]?[0-9]%$"}
+    },
+    "models": {
+      "description": "`array` of model names (`string`s) that provide data",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "target_variables": {
+      "description": "`array` of `object`s defining the target variables in the data. Each object contains three keys: `value`, `text`, `plot_text`",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "description": "used as the main value that's passed around for the target",
+            "type": "string",
+            "minLength": 1
+          },
+          "text": {
+            "description": "human-readable text",
+            "type": "string",
+            "minLength": 1
+          },
+          "plot_text": {
+            "description": "plot text",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["value", "text", "plot_text"]
+      }
+    },
+    "units": {
+      "description": "`array` of `object`s defining the units (typically locations) in the data. Each object contains two keys: `value`, `text`",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "description": "used as the main value that's passed around for the unit",
+            "type": "string",
+            "minLength": 1
+          },
+          "text": {
+            "description": "human-readable text",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["value", "text"]
+      }
+    }
+  },
+  "required": ["available_as_ofs", "current_date", "disclaimer", "initial_as_of", "initial_checked_models",
+    "initial_interval", "initial_target_var", "initial_unit", "initial_xaxis_range", "intervals", "models",
+    "target_variables", "units"]
+}

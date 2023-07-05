@@ -7,7 +7,7 @@ A JavaScript (ES6 ECMAScript) module for forecast visualization.
 
 To use the component in your app, you'll need to add the following to your HTML:
 
-1. add `<script>` and stylesheet `<link>` tags to the `<head>`
+1. add `<script>` and stylesheet `<link>` tags for dependencies to the `<head>`
 2. add a `<div>` to the `<body>` for the component to fill
 3. add a `<script>` in the `<body>` that initializes the component via the (default) `App` object that's exported
 
@@ -35,24 +35,20 @@ In your HTML file, load the required CSS and JavaScript files:
 <!-- predtimechart -->
 <script src="https://cdn.plot.ly/plotly-2.12.1.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.3/moment.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/reichlab/predtimechart@1.0.0/predtimechart.css">
 ```
 
 2. In the `<body>`, add the row `<div>` that will hold the component:
 
 ```html
-
-<div id="forecastViz_row" class="row">
-</div>
+<div id="forecastViz_row" class="row"></div>
 ```
 
-3. In the `<body>`, load and use the hub-viz module:
+3. In the `<body>`, load and use the predtimechart module:
 
 ```html
-
 <script type="module">
     // import the module's entry point (the `App` object)
-    import App from 'https://cdn.jsdelivr.net/gh/reichlab/predtimechart@1.0.6/predtimechart.js';
+    import App from 'https://cdn.jsdelivr.net/gh/reichlab/predtimechart@1.2.0/predtimechart.js';
 
     // set up _fetchData, _calcUemForecasts (optional), and options
     function _fetchData(isForecast, targetKey, unitAbbrev, referenceDate) { ... }
@@ -61,7 +57,7 @@ In your HTML file, load the required CSS and JavaScript files:
 
     const options = {...};
 
-    // initialize the component
+    // initialize the component: componentDiv, _fetchData, isIndicateRedraw, options, _calcUemForecasts
     App.initialize('forecastViz_row', _fetchData, false, options, _calcUemForecasts);
 </script>
 ```
@@ -87,26 +83,26 @@ The component is accessed via the `App` object, and is initialized via the `App.
 
 # Options object
 
-The component is initialized by a JavaScript object with the following keys and values. See the "Example options object" for a detailed example.
+The component is initialized by a JavaScript object with the following keys and values. See the "Example options object" for a detailed example. See `src/schema.json` for the options object's JSON Schema.
 
+- `available_as_ofs`: `object` that maps `target_variables` `value` to an `array` of dates in 'YYYY-MM-DD' format that have truth and/or forecasts available
+- `current_date`:  `available_as_ofs` `value` key to use for the initial plot
+- `disclaimer`: `string` providing any important information users should know
+- `initial_as_of`: `string` specifying the initial date from 'available_as_ofs' (in 'YYYY-MM-DD' format) to use for the initially-selected _as_of_ date
+- `initial_checked_models`: `models` value(s) to use for the initial plot
+- `initial_interval`: `intervals` value to use for the initial plot
+- `initial_target_var`: `target_variables` `value` key to use for the initial plot
+- `initial_unit`:  `units` `value` key to use for the initial plot
+- `initial_xaxis_range`: optional `array` of two dates in 'YYYY-MM-DD' format that specify the initial xaxis range to use. To not initialize the range, either don't pass this key or pass `null` for its value
+- `intervals`: `array` of one or more integers between 0 and 100 inclusive, representing percentages (purpose: TBD)
+- `models`: `array` of model names (`string`s) that provide data
 - `target_variables`: `array` of `object`s defining the target variables in the data. Each object contains three keys:
     - 'value': used as the main value that's passed around for the target
     - 'text': human-readable text
     - 'plot_text': plot text (purpose: TBD)
-- `initial_target_var`: `target_variables` `value` key to use for the initial plot
 - `units`: `array` of `object`s defining the units (typically locations) in the data. Each object contains two keys:
   - `value`: used as the main value that's passed around for the unit
   - `text`: human-readable text
-- `initial_unit`:  `units` `value` key to use for the initial plot
-- `intervals`: `array` of one or more integers between 0 and 100 inclusive, representing percentages (purpose: TBD)
-- `initial_interval`: `intervals` value to use for the initial plot
-- `available_as_ofs`: `object` that maps `target_variables` `value` to an `array` of dates in 'YYYY-MM-DD' format that have truth and/or forecasts available
-- `initial_as_of`: `string` specifying the initial date from 'available_as_ofs' (in 'YYYY-MM-DD' format) to use for the initially-selected _as_of_ date
-- `current_date`:  `available_as_ofs` `value` key to use for the initial plot
-- `models`: `array` of model names (`string`s) that provide data
-- `initial_checked_models`: `models` value(s) to use for the initial plot
-- `disclaimer`: `string` providing any important information users should know
-- `initial_xaxis_range`: optional `array` of two dates in 'YYYY-MM-DD' format that specify the initial xaxis range to use. To not initialize the range, either don't pass this key or pass `null` for its value
 
 
 ## Example options object
@@ -115,28 +111,6 @@ Here's a real-world example from the [COVID-19 Forecast Hub](https://covid19fore
 
 ```json
 {
-  "target_variables": [
-    {
-      "value": "day_ahead_cumulative_deaths",
-      "text": "day ahead cumulative deaths",
-      "plot_text": "day ahead cumulative deaths"
-    },
-    {
-      "value": "day_ahead_incident_deaths",
-      "text": "day ahead incident deaths",
-      "plot_text": "day ahead incident deaths"
-    },
-    "..."
-  ],
-  "initial_target_var": "week_ahead_incident_deaths",
-  "units": [
-    {"value": "US", "text": "US"},
-    {"value": "01", "text": "Alabama"},
-    "..."
-  ],
-  "initial_unit": "US",
-  "intervals": ["0%", "50%", "95%"],
-  "initial_interval": "95%",
   "available_as_ofs": {
     "day_ahead_cumulative_deaths": [
       "2020-03-15",
@@ -150,18 +124,41 @@ Here's a real-world example from the [COVID-19 Forecast Hub](https://covid19fore
     ],
     "...": "..."
   },
-  "initial_as_of": "2022-10-12",
   "current_date": "2022-10-22",
+  "disclaimer": "Most forecasts have failed to reliably predict rapid changes in the trends of reported cases and hospitalizations..."
+  "initial_as_of": "2022-10-12",
+  "initial_checked_models": [
+    "COVIDhub-baseline",
+    "COVIDhub-ensemble"
+  ],
+  "initial_interval": "95%",
+  "initial_target_var": "week_ahead_incident_deaths",
+  "initial_unit": "US",
+  "initial_xaxis_range": null,
+  "intervals": ["0%", "50%", "95%"],
   "models": [
     "COVIDhub-baseline",
     "COVIDhub-ensemble",
     "..."
   ],
-  "initial_checked_models": [
-    "COVIDhub-baseline",
-    "COVIDhub-ensemble"
+  "target_variables": [
+    {
+      "value": "day_ahead_cumulative_deaths",
+      "text": "day ahead cumulative deaths",
+      "plot_text": "day ahead cumulative deaths"
+    },
+    {
+      "value": "day_ahead_incident_deaths",
+      "text": "day ahead incident deaths",
+      "plot_text": "day ahead incident deaths"
+    },
+    "..."
   ],
-  "disclaimer": "Most forecasts have failed to reliably predict rapid changes in the trends of reported cases and hospitalizations..."
+  "units": [
+    {"value": "US", "text": "US"},
+    {"value": "01", "text": "Alabama"},
+    "..."
+  ]
 }
 ```
 
@@ -208,20 +205,37 @@ Forecast data is an `object` with one entry for each model in the options object
 ```
 
 
-# Running unit tests
+# Development
 
-We use [QUnit](https://qunitjs.com/) for our unit tests. Either load the page [test.html](test.html) in your browser (automatically runs the tests), or install in npm per [Getting Started](https://qunitjs.com/intro/):
+Following is how to do development-related activities. You must first install the required Node.js packages via `npm install --save-dev`.
+
+
+## Running unit tests
+
+We use [QUnit](https://qunitjs.com/) for our unit tests. To run the tests, execute the `package.json` `test` script: `npm run test`. You should see output at the bottom like this:
+
 ```bash
-cd "<predtimechart repo root>"
-npm install --save-dev qunit
+...
+# pass 22
+# skip 0
+# todo 0
+# fail 0
 ```
 
-And then run the tests:
-```bash
-npm run
-# or:
-qunit``
-```
+
+## Trying the app locally
+
+We've included `src/index.html` as a simple example of the app in action. The file hard-codes truth and forecast data, and has ata for only one `referenceDate`, but can be useful during development. To use it, follow the below packaging step, serve `dist/index.html` from your development environment (trying to open it directly from the filesystem will cause a [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors/CORSRequestNotHttp) error), and then view it in your browser.
+
+
+## Updating `/src/schema.json`
+
+We use [Ajv](https://ajv.js.org/) to validate `App.initialize()`'s `options` object. More specifically we use a standalone validation function generated from the schema, which is saved to `schema-validator.cjs`. This file must be regenerated whenever the schema file `/src/schema.json` changes. To do so, execute the `package.json` `ajv_compile` script via `npm run ajv_compile`.
+
+
+## Packaging the component
+
+We use [webpack](https://webpack.js.org/) to package up all dependencies into a single `dist/predtimechart.bundle.js` file for end users. To do so, execute the `package.json` `build` script via `npm run build`, which will update all files in `dist/`.
 
 
 # Overall usage and features

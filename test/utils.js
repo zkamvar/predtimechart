@@ -1,4 +1,4 @@
-import {closestYear} from '../utils.js';
+import {closestYear} from '../src/utils.js';
 
 const {test} = QUnit;
 

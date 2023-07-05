@@ -1,4 +1,4 @@
-import _calcUemForecasts from '../user-ensemble-model.js';
+import _calcUemForecasts from '../src/user-ensemble-model.js';
 
 const {test} = QUnit;
 

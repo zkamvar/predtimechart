@@ -300,7 +300,7 @@ const App = {
         this.isIndicateRedraw = isIndicateRedraw;
         this._calcUemForecasts = _calcUemForecasts;
 
-        console.debug('initialize(): entered', componentDiv, _fetchData, isIndicateRedraw, options, _calcUemForecasts);
+        console.debug('initialize(): entered');
 
         // validate componentDiv
         const componentDivEle = document.getElementById(componentDiv);
