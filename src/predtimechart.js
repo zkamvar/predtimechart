@@ -262,7 +262,6 @@ const App = {
         // Dynamic/updated data, used to track 2 categories:
         // 1/2 Tracks UI state:
         selected_target_var: '',
-        selected_unit: '',
         selected_interval: '',
         selected_as_of_date: '',
         selected_truth: ['Current Truth', 'Truth as of'],
@@ -335,7 +334,6 @@ const App = {
 
         // save initial selected state
         this.state.selected_target_var = options['initial_target_var'];
-        this.state.selected_unit = options['initial_unit'];
         this.state.selected_interval = options['initial_interval'];
         this.state.selected_as_of_date = options['initial_as_of'];
         // this.state.selected_truth: synchronized via default <input ... checked> setting
@@ -369,7 +367,7 @@ const App = {
         console.log('initialize(): initializing UI');
         const $componentDiv = $(componentDivEle);
         _createUIElements($componentDiv, this.isUemEnabled);
-        this.initializeUI();
+        this.initializeUI(options);
 
         // wire up UI controls (event handlers)
         this.addEventHandlers();
@@ -380,10 +378,10 @@ const App = {
 
         console.log('initialize(): done');
     },
-    initializeUI() {
+    initializeUI(options) {
         // populate options and models list (left column)
         this.initializeTargetVarsUI();
-        this.initializeUnitsUI();
+        this.initializeUnitsUI(options['initial_interval']);
         this.initializeIntervalsUI();
         this.updateModelsList();
 
@@ -502,13 +500,13 @@ const App = {
             $targetVarsSelect.append(optionNode);
         });
     },
-    initializeUnitsUI() {
+    initializeUnitsUI(initialInterval) {
         // populate the unit select
         const $unitSelect = $("#unit");
         const thisState = this.state;
         $unitSelect.empty();
         this.state.units.forEach(function (unit) {
-            const selected = unit.value === thisState.selected_unit ? 'selected' : '';
+            const selected = unit.value === initialInterval ? 'selected' : '';
             const optionNode = `<option value="${unit.value}" ${selected} >${unit.text}</option>`;
             $unitSelect.append(optionNode);
         });
@@ -565,7 +563,6 @@ const App = {
             App.fetchDataUpdatePlot(true, true, false);
         });
         $('#unit').on('change', function () {
-            App.state.selected_unit = this.value;
             App.fetchDataUpdatePlot(true, true, false);
         });
         $('#intervals').on('change', function () {
@@ -803,6 +800,11 @@ const App = {
         });
     },
 
+    // returns the value of the Unit <SELECT>
+    selectedUnit() {
+        return $('#unit').val();
+    },
+
     //
     // date fetch-related functions
     //
@@ -855,7 +857,7 @@ const App = {
     fetchCurrentTruth() {
         this.state.current_truth = [];  // clear in case of error
         return this._fetchData(false,  // Promise
-            this.state.selected_target_var, this.state.selected_unit, this.state.current_date)
+            this.state.selected_target_var, this.selectedUnit(), this.state.current_date)
             .then(response => response.json())
             .then((data) => {
                 this.state.current_truth = data;
@@ -865,7 +867,7 @@ const App = {
     fetchAsOfTruth() {
         this.state.as_of_truth = [];  // clear in case of error
         return this._fetchData(false,  // Promise
-            this.state.selected_target_var, this.state.selected_unit, this.state.selected_as_of_date)
+            this.state.selected_target_var, this.selectedUnit(), this.state.selected_as_of_date)
             .then(response => response.json())
             .then((data) => {
                 this.state.as_of_truth = data;
@@ -875,7 +877,7 @@ const App = {
     fetchForecasts() {
         this.state.forecasts = {};  // clear in case of error
         return this._fetchData(true,  // Promise
-            this.state.selected_target_var, this.state.selected_unit, this.state.selected_as_of_date)
+            this.state.selected_target_var, this.selectedUnit(), this.state.selected_as_of_date)
             .then(response => response.json())  // Promise
             .then((data) => {
                 this.state.forecasts = data;
@@ -985,7 +987,7 @@ const App = {
         }
 
         const variable = this.state.target_variables.filter((obj) => obj.value === this.state.selected_target_var)[0].plot_text;
-        const unit = this.state.units.filter((obj) => obj.value === this.state.selected_unit)[0].text;
+        const unit = this.state.units.filter((obj) => obj.value === this.selectedUnit())[0].text;
         return {
             autosize: true,
             showlegend: false,
