@@ -87,7 +87,7 @@ function _validateOptions(options) {
     const taskIds = options['task_ids'];
     const initialTaskIds = options['initial_task_ids'];
     if (!eqSet(new Set(Object.keys(taskIds)), new Set(Object.keys(initialTaskIds)))) {
-        throw `initial_task_ids key !== task_ids: ${initialTaskIds}`;
+        throw `initial_task_ids key !== task_ids: ${JSON.stringify(initialTaskIds)}`;
     }
 
     // semantics test 7/7: initial_task_ids value in task_ids
