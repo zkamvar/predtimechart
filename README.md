@@ -51,7 +51,7 @@ In your HTML file, load the required CSS and JavaScript files:
     import App from 'https://cdn.jsdelivr.net/gh/reichlab/predtimechart@1.2.0/predtimechart.js';
 
     // set up _fetchData, _calcUemForecasts (optional), and options
-    function _fetchData(isForecast, targetKey, unitAbbrev, referenceDate) { ... }
+    function _fetchData(isForecast, targetKey, taskIDs, referenceDate) { ... }
 
     function _calcUemForecasts(componentModels, targetKey, referenceDate, userModelName) { ... }
 
@@ -64,13 +64,27 @@ In your HTML file, load the required CSS and JavaScript files:
 
 # JavaScript API
 
-The component is accessed via the `App` object, and is initialized via the `App.initialize()` function. After that, everything else is taken care of by the app. `App.initialize(componentDiv, _fetchData, isIndicateRedraw, options, _calcUemForecasts)` takes these args:
+The component is accessed via the `App` object, and is initialized via the `App.initialize()` function. After that, everything else is taken care of by the app.
+
+
+## About _task ID variables_
+
+Predtimechart has adopted a simplified version of the _modeling tasks_ concept defined in [Modeling Hub task ID variables](https://hubdocs.readthedocs.io/en/latest/format/tasks.html#task-id-vars), and specifically the idea of _task ID variables_. These variables are used in these ways (details follow):
+
+1. Initializing the application's UI: The `task_ids` object passed to App.initialize() via the containing options object (see the "Options object" section below) configures the dropdown menus in the options section of the UI. Specifically, each task ID gets its own dropdown, positioned between the fixed **Outcome** and **Interval** dropdowns. For example, if the options object's `task_ids` specifies two task IDs ("scenario_id" and "location") then there will be two dropdowns between Outcome and Interval: "scenario_id" and "location". Those dropdowns' values will contain the values passed in the `task_ids` object.
+1. Initializing the dropdown default values: Predtimechart uses the options object's `initial_task_ids` to select the initial values that the user sees.
+1. Args to the `_fetchData` function: When the user takes an action that requires obtaining data, predtimechart will pass the currently-selected values in the above dropdowns to the `_fetchData` function.
+
+
+## App.initialize() args
+
+`App.initialize(componentDiv, _fetchData, isIndicateRedraw, options, _calcUemForecasts)` takes these args:
 
 - `componentDiv`: `id` of the empty `<div>` to place the component into.
 - `_fetchData`: function to retrieve truth and forecast data. It is called whenever the plot needs updating. See the "fetchData data format" section for details. It takes these args:
     - `isForecast`: `boolean` indicating type of data to retrieve. `true` means retrieve forecast data and `false` means get truth data.
     - `targetKey`: `string` naming the target of interest. Must be one of the values in the options object's `target_variables` value.
-    - `unitAbbrev`: "" unit "". Must be one of the values in the options object's `units` value.
+    - `taskIDs`: `object` specifying which modeling task to retrieve data for (see _task ID variables_ above). Must be consistent with the `options` object's `task_ids` value (see the "Options object" section for details).
     - `referenceDate`: "" reference date "". Must be one of the values in the options object's `available_as_ofs` value.
 - `isIndicateRedraw`: `boolean` that controls whether the plot area should be grayed out while waiting for data requests. Useful for applications that have a noticeable delay when fetching data.
 - `options`: `object` that contains initialization data. See the "Options object" section for details.
@@ -92,7 +106,7 @@ The component is initialized by a JavaScript object with the following keys and 
 - `initial_checked_models`: `models` value(s) to use for the initial plot
 - `initial_interval`: `intervals` value to use for the initial plot
 - `initial_target_var`: `target_variables` `value` key to use for the initial plot
-- `initial_unit`:  `units` `value` key to use for the initial plot
+- `initial_task_ids`:  an `object` to use for the initial plot. Its format is identical to `_fetchData()`'s `taskIDs` arg above.
 - `initial_xaxis_range`: optional `array` of two dates in 'YYYY-MM-DD' format that specify the initial xaxis range to use. To not initialize the range, either don't pass this key or pass `null` for its value
 - `intervals`: `array` of one or more integers between 0 and 100 inclusive, representing percentages (purpose: TBD)
 - `models`: `array` of model names (`string`s) that provide data
@@ -100,9 +114,9 @@ The component is initialized by a JavaScript object with the following keys and 
     - 'value': used as the main value that's passed around for the target
     - 'text': human-readable text
     - 'plot_text': plot text (purpose: TBD)
-- `units`: `array` of `object`s defining the units (typically locations) in the data. Each object contains two keys:
-  - `value`: used as the main value that's passed around for the unit
-  - `text`: human-readable text
+- `task_ids`: `object` defining the _tasks_ in the data as described in `_fetchData`'s `taskIDs` arg above. The object contains a key for each task ID variable, the value of which is a list of `object`s defining possible values. Those objects have these two keys:
+    - `value`: used as the main value that's passed around for the task ID
+    - `text`: human-readable text
 
 
 ## Example options object
@@ -133,7 +147,7 @@ Here's a real-world example from the [COVID-19 Forecast Hub](https://covid19fore
   ],
   "initial_interval": "95%",
   "initial_target_var": "week_ahead_incident_deaths",
-  "initial_unit": "US",
+  "initial_task_ids": {"unit": "48"},
   "initial_xaxis_range": null,
   "intervals": ["0%", "50%", "95%"],
   "models": [
@@ -154,11 +168,13 @@ Here's a real-world example from the [COVID-19 Forecast Hub](https://covid19fore
     },
     "..."
   ],
-  "units": [
-    {"value": "US", "text": "US"},
-    {"value": "01", "text": "Alabama"},
-    "..."
-  ]
+  "task_ids": {
+    "unit": [
+      {"value": "48", "text": "Texas"},
+      {"value": "US", "text": "US"},
+      "..."
+    ]
+  }
 }
 ```
 

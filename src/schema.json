@@ -43,9 +43,10 @@
       "description": "`target_variables` `value` key to use for the initial plot",
       "type": "string"
     },
-    "initial_unit": {
-      "description": "`units` `value` key to use for the initial plot",
-      "type": "string"
+    "initial_task_ids": {
+      "description": "an `object` to use for the initial plot. format is identical to `_fetchData()`'s `taskIDs` arg",
+      "type": "object",
+      "minProperties": 1
     },
     "initial_xaxis_range": {
       "description": "optional `array` of two dates in 'YYYY-MM-DD' format that specify the initial xaxis range to use. To not initialize the range, either don't pass this key or pass `null` for its value",
@@ -94,29 +95,31 @@
         "required": ["value", "text", "plot_text"]
       }
     },
-    "units": {
-      "description": "`array` of `object`s defining the units (typically locations) in the data. Each object contains two keys: `value`, `text`",
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "properties": {
-          "value": {
-            "description": "used as the main value that's passed around for the unit",
-            "type": "string",
-            "minLength": 1
-          },
-          "text": {
-            "description": "human-readable text",
-            "type": "string",
-            "minLength": 1
+    "task_ids": {
+      "description": "`object` defining the _tasks_ in the data as described in `_fetchData`'s `taskIDs` arg",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "description": "used as the main value that's passed around for the task_id",
+              "type": "string",
+              "minLength": 1
+            },
+            "text": {
+              "description": "human-readable text",
+              "type": "string",
+              "minLength": 1
+            }
           }
-        },
-        "required": ["value", "text"]
+        }
       }
     }
   },
   "required": ["available_as_ofs", "current_date", "disclaimer", "initial_as_of", "initial_checked_models",
-    "initial_interval", "initial_target_var", "initial_unit", "initial_xaxis_range", "intervals", "models",
-    "target_variables", "units"]
+    "initial_interval", "initial_target_var", "initial_task_ids", "initial_xaxis_range", "intervals", "models",
+    "target_variables", "task_ids"]
 }

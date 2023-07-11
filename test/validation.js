@@ -10,7 +10,7 @@ const {test} = QUnit;
 
 const covid19ForecastsVizTestOptions = {
     "available_as_ofs": {
-        "week_ahead_incident_deaths": ["2022-01-01", "2022-01-08", "2022-01-15", "2022-01-22", "2022-01-29"]
+        "week_ahead_incident_deaths": ["2022-01-22", "2022-01-29"]
     },
     "current_date": "2022-01-29",
     "disclaimer": "Most forecasts have failed to reliably predict rapid changes in the trends of reported cases and hospitalizations. Due to this limitation, they should not be relied upon for decisions about the possibility or timing of rapid changes in trends.",
@@ -18,7 +18,7 @@ const covid19ForecastsVizTestOptions = {
     "initial_checked_models": ["COVIDhub-baseline", "COVIDhub-ensemble"],
     "initial_interval": "95%",
     "initial_target_var": "week_ahead_incident_deaths",
-    "initial_unit": "48",
+    "initial_task_ids": {"unit": "48"},
     "initial_xaxis_range": null,
     "intervals": ["0%", "50%", "95%"],
     "models": ["COVIDhub-ensemble", "COVIDhub-baseline"],
@@ -27,7 +27,7 @@ const covid19ForecastsVizTestOptions = {
         "text": "week ahead incident deaths",
         "plot_text": "week ahead incident deaths"
     }],
-    "units": [{"value": "48", "text": "Texas"}, {"value": "US", "text": "US"}],
+    "task_ids": {"unit": [{"value": "48", "text": "Texas"}, {"value": "US", "text": "US"}]},
 };
 
 
@@ -79,7 +79,7 @@ test('options object blue sky', assert => {
 
 QUnit.module('initialize() options object other structural validation');
 
-test('available_as_ofs at least one key', assert => {  // structure test 1/1
+test('available_as_ofs at least one key', assert => {
     const optionsCopy = structuredClone(covid19ForecastsVizTestOptions);
     optionsCopy['available_as_ofs'] = {};
     assert.throws(
@@ -93,7 +93,7 @@ test('available_as_ofs at least one key', assert => {  // structure test 1/1
 
 QUnit.module('initialize() options object semantics validation');
 
-test('available_as_ofs keys in target_variables value', assert => {  // semantics test 1/6
+test('available_as_ofs keys in target_variables value', assert => {
     const optionsCopy = structuredClone(covid19ForecastsVizTestOptions);
     optionsCopy['available_as_ofs'] = {"bad key": ["2021-01-01"]};
     assert.throws(
@@ -105,7 +105,7 @@ test('available_as_ofs keys in target_variables value', assert => {  // semantic
 });
 
 
-test('initial_as_of in available_as_ofs array', assert => {  // semantics test 2/6
+test('initial_as_of in available_as_ofs array', assert => {
     const optionsCopy = structuredClone(covid19ForecastsVizTestOptions);
     optionsCopy['initial_as_of'] = "2021-01-01";
     assert.throws(
@@ -117,7 +117,7 @@ test('initial_as_of in available_as_ofs array', assert => {  // semantics test 2
 });
 
 
-test('initial_checked_models in models', assert => {  // semantics test 3/6
+test('initial_checked_models in models', assert => {
     const optionsCopy = structuredClone(covid19ForecastsVizTestOptions);
     optionsCopy['initial_checked_models'] = [null];
     assert.throws(
@@ -129,7 +129,7 @@ test('initial_checked_models in models', assert => {  // semantics test 3/6
 });
 
 
-test('initial_interval in intervals', assert => {  // semantics test 4/6
+test('initial_interval in intervals', assert => {
     const optionsCopy = structuredClone(covid19ForecastsVizTestOptions);
     optionsCopy['initial_interval'] = "not in intervals";
     assert.throws(
@@ -141,7 +141,7 @@ test('initial_interval in intervals', assert => {  // semantics test 4/6
 });
 
 
-test('initial_target_var in target_variables values', assert => {  // semantics test 5/6
+test('initial_target_var in target_variables values', assert => {
     const optionsCopy = structuredClone(covid19ForecastsVizTestOptions);
     optionsCopy['initial_target_var'] = "not in target_variables";
     assert.throws(
@@ -153,13 +153,21 @@ test('initial_target_var in target_variables values', assert => {  // semantics 
 });
 
 
-test('initial_unit in units value', assert => {  // semantics test 6/6
+test('initial_task_ids in task_ids value', assert => {
     const optionsCopy = structuredClone(covid19ForecastsVizTestOptions);
-    optionsCopy['initial_unit'] = "not in units";
+    optionsCopy['initial_task_ids'] = {"key not in task_ids": null};
     assert.throws(
         function () {
             App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
         },
-        /initial_unit not in units/,
+        /initial_task_ids key !== task_ids/,
+    );
+
+    optionsCopy['initial_task_ids'] = {"unit": "value not in task_ids"};
+    assert.throws(
+        function () {
+            App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
+        },
+        /initial_task_ids value not in task_ids/,
     );
 });

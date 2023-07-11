@@ -36,7 +36,8 @@
         "initial_checked_models": ["COVIDhub-baseline", "COVIDhub-ensemble"],
         "initial_interval": "95%",
         "initial_target_var": "week_ahead_incident_deaths",
-        "initial_unit": "48",
+        // "initial_task_ids": {"unit": "48"},
+        "initial_task_ids": {"scenario_id": "1", "location": "48"},
         "initial_xaxis_range": null,
         "intervals": ["0%", "50%", "95%"],
         "models": ["COVIDhub-ensemble", "COVIDhub-baseline"],
@@ -45,11 +46,16 @@
             "text": "week ahead incident deaths",
             "plot_text": "week ahead incident deaths"
         }],
-        "units": [{"value": "48", "text": "Texas"}, {"value": "US", "text": "US"}],
+        // "task_ids": {"unit": [{"value": "48", "text": "Texas"}, {"value": "US", "text": "US"}]},
+        "task_ids": {
+            "scenario_id": [{"value": "1", "text": "scenario 1"}, {"value": "2", "text": "scenario 2"}],
+            "location": [{"value": "48", "text": "Texas"}, {"value": "US", "text": "US"}]
+        },
     };
 
     // a simple fetchData() that hard-codes truth and forecast data for two reference_dates
-    function _fetchData(isForecast, targetKey, unitAbbrev, referenceDate) {
+    function _fetchData(isForecast, targetKey, taskIDs, referenceDate) {
+        console.debug('_fetchData():', isForecast, targetKey, taskIDs, referenceDate);
         const isForecastToRefDateToData = {
             true: {
                 // https://zoltardata.com/api/project/316/viz-data/?is_forecast=true&target_key=week_ahead_incident_deaths&unit_abbrev=48&reference_date=2022-01-22 :

@@ -101,37 +101,42 @@ function _setSelectedTruths() {
  *
  * @param $componentDiv - an empty Bootstrap 4 row (JQuery object)
  * @param isUemEnabled - true if the Action menu should be added
+ * @param taskIdsKeys - array of options.task_ids keys. used to create task rows - one per task ID
  * @private
  */
-function _createUIElements($componentDiv, isUemEnabled) {
+function _createUIElements($componentDiv, isUemEnabled, taskIdsKeys) {
+    //
+    // helper functions for creating for rows
+    //
+
+    function titleCase(str) {  // per https://stackoverflow.com/questions/196972/convert-string-to-title-case-with-javascript
+        return str.toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
+    }
+
+    function _createFormRow(selectId, label) {
+        return $(
+            `<div class="form-row">\n` +
+            `    <label for="${selectId}" class="col-sm-4 col-form-label">${label}:</label>\n` +
+            `    <div class="col-sm-8">\n` +
+            `        <select id="${selectId}" class="form-control"></select>\n` +
+            `    </div>\n` +
+            `</div>`)
+    }
+
+
     //
     // make $optionsDiv (left column)
     //
     const $optionsDiv = $('<div class="col-md-3" id="forecastViz_options"></div>');
 
-    // add Outcome, Unit, and Interval selects (form)
-    const $outcomeFormRow = $(
-        '<div class="form-row">\n' +
-        '    <label for="target_variable" class="col-sm-4 col-form-label">Outcome:</label>\n' +
-        '    <div class="col-sm-8">\n' +
-        '        <select id="target_variable" class="form-control" name="target_variables"></select>\n' +
-        '    </div>\n' +
-        '</div>');
-    const $unitFormRow = $(
-        '<div class="form-row">\n' +
-        '    <label for="unit" class="col-sm-4 col-form-label">Unit:</label>\n' +
-        '    <div class="col-sm-8">\n' +
-        '        <select id="unit" class="form-control" name="unit"></select>\n' +
-        '    </div>\n' +
-        '</div>');
-    const $intervalFormRow = $(
-        '<div class="form-row">\n' +
-        '    <label for="intervals" class="col-sm-4 col-form-label">Interval:</label>\n' +
-        '    <div class="col-sm-8">\n' +
-        '        <select id="intervals" class="form-control" name="intervals">\n' +
-        '    </div>\n' +
-        '</div>');
-    const $optionsForm = $('<form></form>').append($outcomeFormRow, $unitFormRow, $intervalFormRow);
+    // add Outcome, task ID, and Interval selects (form). NB: these are unfilled; their <OPTION>s are added by
+    // initializeTargetVarsUI(), initializeTaskIDsUI(), and initializeIntervalsUI(), respectively
+    const $optionsForm = $('<form></form>');
+    $optionsForm.append(_createFormRow('target_variable', 'Outcome'));
+    taskIdsKeys.forEach(taskIdKey => {
+        $optionsForm.append(_createFormRow(taskIdKey, titleCase(taskIdKey)));
+    });
+    $optionsForm.append(_createFormRow('intervals', 'Interval'));
     $optionsDiv.append($optionsForm);
 
     // add truth checkboxes
@@ -252,7 +257,7 @@ const App = {
     state: {
         // Static data, fixed at time of creation:
         target_variables: [],
-        units: [],
+        task_ids: [],
         intervals: [],
         available_as_ofs: [],
         current_date: "",
@@ -285,8 +290,8 @@ const App = {
      * Initialize this app using the passed args.
      *
      * @param {String} componentDiv - id of a DOM node to populate. it must be an empty Bootstrap 4 row
-     * @param {Function} _fetchData - function as documented in forecast-repository/forecast_app/templates/project_viz.html .
-     *   args: isForecast, targetKey, unitAbbrev, referenceDate
+     * @param {Function} _fetchData - function as documented in README.md .
+     *   args: isForecast, targetKey, taskIDs, referenceDate
      * @param {Boolean} isIndicateRedraw - controls whether the plot area should be grayed out while waiting for data
      *   requests
      * @param {Object} options - visualization initialization options as documented at https://docs.zoltardata.com/visualizationoptionspage/
@@ -312,7 +317,7 @@ const App = {
 
         // save static vars
         this.state.target_variables = options['target_variables'];
-        this.state.units = options['units'];
+        this.state.task_ids = options['task_ids'];
         this.state.intervals = options['intervals'];
         this.state.available_as_ofs = options['available_as_ofs'];
         this.state.current_date = options['current_date'];
@@ -366,7 +371,7 @@ const App = {
 
         console.log('initialize(): initializing UI');
         const $componentDiv = $(componentDivEle);
-        _createUIElements($componentDiv, this.isUemEnabled);
+        _createUIElements($componentDiv, this.isUemEnabled, Object.keys(this.state.task_ids));
         this.initializeUI(options);
 
         // wire up UI controls (event handlers)
@@ -381,7 +386,7 @@ const App = {
     initializeUI(options) {
         // populate options and models list (left column)
         this.initializeTargetVarsUI();
-        this.initializeUnitsUI(options['initial_interval']);
+        this.initializeTaskIDsUI(options['initial_task_ids']);
         this.initializeIntervalsUI();
         this.updateModelsList();
 
@@ -490,32 +495,35 @@ const App = {
         $(document.body).append($uemEditModelNameModalDiv);
     },
     initializeTargetVarsUI() {
-        // populate the target variable select
+        // populate the target variable <SELECT>
         const $targetVarsSelect = $("#target_variable");
         const thisState = this.state;
-        $targetVarsSelect.empty();
+        // $targetVarsSelect.empty();
         this.state.target_variables.forEach(function (targetVar) {
             const selected = targetVar.value === thisState.selected_target_var ? 'selected' : '';
             const optionNode = `<option value="${targetVar.value}" ${selected} >${targetVar.text}</option>`;
             $targetVarsSelect.append(optionNode);
         });
     },
-    initializeUnitsUI(initialInterval) {
-        // populate the unit select
-        const $unitSelect = $("#unit");
+    initializeTaskIDsUI(initialTaskIds) {
+        // populate task ID-related <SELECT>s
         const thisState = this.state;
-        $unitSelect.empty();
-        this.state.units.forEach(function (unit) {
-            const selected = unit.value === initialInterval ? 'selected' : '';
-            const optionNode = `<option value="${unit.value}" ${selected} >${unit.text}</option>`;
-            $unitSelect.append(optionNode);
+        Object.keys(this.state.task_ids).forEach(function (taskIdKey) {
+            const $taskIdSelect = $(`#${taskIdKey}`);  // created by _createUIElements()
+            // $taskIdSelect.empty();
+            const taskIdValueObjs = thisState.task_ids[taskIdKey];
+            taskIdValueObjs.forEach(taskIdValueObj => {
+                const selected = taskIdValueObj.value === initialTaskIds[taskIdKey] ? 'selected' : '';
+                const optionNode = `<option value="${taskIdValueObj.value}" ${selected} >${taskIdValueObj.text}</option>`;
+                $taskIdSelect.append(optionNode);
+            });
         });
     },
     initializeIntervalsUI() {
-        // populate the interval select
+        // populate the interval <SELECT>
         const $intervalsSelect = $("#intervals");
         const thisState = this.state;
-        $intervalsSelect.empty();
+        // $intervalsSelect.empty();
         this.state.intervals.forEach(function (interval) {
             const selected = interval === thisState.selected_interval ? 'selected' : '';
             const optionNode = `<option value="${interval}" ${selected} >${interval}</option>`;
@@ -557,13 +565,16 @@ const App = {
         _updateUemErrorIcon();
     },
     addEventHandlers() {
-        // option, unit, and interval selects
+        // option, task ID, and interval selects
         $('#target_variable').on('change', function () {
             App.state.selected_target_var = this.value;
             App.fetchDataUpdatePlot(true, true, false);
         });
-        $('#unit').on('change', function () {
-            App.fetchDataUpdatePlot(true, true, false);
+        Object.keys(this.state.task_ids).forEach(function (taskIdKey) {
+            const $taskIdSelect = $(`#${taskIdKey}`);  // created by _createUIElements()
+            $taskIdSelect.on('change', function () {
+                App.fetchDataUpdatePlot(true, true, false);
+            });
         });
         $('#intervals').on('change', function () {
             App.state.selected_interval = this.value;
@@ -800,9 +811,15 @@ const App = {
         });
     },
 
-    // returns the value of the Unit <SELECT>
-    selectedUnit() {
-        return $('#unit').val();
+    // returns the value(s) of the task ID <SELECT>(s) as an object similar to format of initial_task_ids, e.g.,
+    // {"scenario_id": 1, "location": "48"}
+    selectedTaskIDs() {
+        const theSelectedTaskIDs = {};  // return value. filled next
+        Object.keys(this.state.task_ids).forEach(function (taskIdKey) {
+            const $taskIdSelect = $(`#${taskIdKey}`);  // created by _createUIElements()
+            theSelectedTaskIDs[taskIdKey] = $taskIdSelect.val();
+        });
+        return theSelectedTaskIDs;
     },
 
     //
@@ -857,7 +874,7 @@ const App = {
     fetchCurrentTruth() {
         this.state.current_truth = [];  // clear in case of error
         return this._fetchData(false,  // Promise
-            this.state.selected_target_var, this.selectedUnit(), this.state.current_date)
+            this.state.selected_target_var, this.selectedTaskIDs(), this.state.current_date)
             .then(response => response.json())
             .then((data) => {
                 this.state.current_truth = data;
@@ -867,7 +884,7 @@ const App = {
     fetchAsOfTruth() {
         this.state.as_of_truth = [];  // clear in case of error
         return this._fetchData(false,  // Promise
-            this.state.selected_target_var, this.selectedUnit(), this.state.selected_as_of_date)
+            this.state.selected_target_var, this.selectedTaskIDs(), this.state.selected_as_of_date)
             .then(response => response.json())
             .then((data) => {
                 this.state.as_of_truth = data;
@@ -877,7 +894,7 @@ const App = {
     fetchForecasts() {
         this.state.forecasts = {};  // clear in case of error
         return this._fetchData(true,  // Promise
-            this.state.selected_target_var, this.selectedUnit(), this.state.selected_as_of_date)
+            this.state.selected_target_var, this.selectedTaskIDs(), this.state.selected_as_of_date)
             .then(response => response.json())  // Promise
             .then((data) => {
                 this.state.forecasts = data;
@@ -987,12 +1004,12 @@ const App = {
         }
 
         const variable = this.state.target_variables.filter((obj) => obj.value === this.state.selected_target_var)[0].plot_text;
-        const unit = this.state.units.filter((obj) => obj.value === this.selectedUnit())[0].text;
+        const taskIdVals = Object.values(this.selectedTaskIDs());  // e.g., {"scenario_id": 1, "location": "48"} -> [1, "48]
         return {
             autosize: true,
             showlegend: false,
             title: {
-                text: `Forecasts of ${variable} <br> in ${unit} as of ${this.state.selected_as_of_date}`,
+                text: `Forecasts of ${variable} <br> in ${taskIdVals} as of ${this.state.selected_as_of_date}`,
                 x: 0.5,
                 y: 0.90,
                 xanchor: 'center',
