@@ -134,7 +134,7 @@ function _createUIElements($componentDiv, isUemEnabled, taskIdsKeys) {
     const $optionsForm = $('<form></form>');
     $optionsForm.append(_createFormRow('target_variable', 'Outcome'));
     taskIdsKeys.forEach(taskIdKey => {
-        $optionsForm.append(_createFormRow(taskIdKey, titleCase(taskIdKey)));
+        $optionsForm.append(_createFormRow(taskIdKey, titleCase(taskIdKey.replace(/[_-]/g, ' '))));  // replace w/spaces
     });
     $optionsForm.append(_createFormRow('intervals', 'Interval'));
     $optionsDiv.append($optionsForm);

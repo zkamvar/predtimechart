@@ -114,7 +114,7 @@ The component is initialized by a JavaScript object with the following keys and 
     - 'value': used as the main value that's passed around for the target
     - 'text': human-readable text
     - 'plot_text': plot text (purpose: TBD)
-- `task_ids`: `object` defining the _tasks_ in the data as described in `_fetchData`'s `taskIDs` arg above. The object contains a `string` key for each task ID variable, the value of which is an `array` of `object`s defining possible values. The keys should consist of only ASCII letters, digits, '_', and '-', and should start with a letter. The objects have two keys:
+- `task_ids`: `object` defining the _tasks_ in the data as described in `_fetchData`'s `taskIDs` arg above. The object contains a `string` key for each task ID variable, the value of which is an `array` of `object`s defining possible values. The keys should consist of only ASCII letters, digits, `_`, and `-`, and should start with a letter. (Note that, for display, the IDs are split on `_` and `-` and the title-cased.) The objects have two keys:
     - `value`: used as the main value that's passed around for the task ID
     - `text`: human-readable text
 
