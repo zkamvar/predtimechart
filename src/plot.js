@@ -3,17 +3,19 @@
 //
 
 function getPlotlyLayout(app) {
-    if (app.state.target_variables.length === 0) {
+    const state = app.state;
+    const uiState = app.uiState;
+    if (state.target_variables.length === 0) {
         return {};
     }
 
-    const variable = app.state.target_variables.filter((obj) => obj.value === app.uiState.selected_target_var)[0].plot_text;
-    const taskIdVals = Object.values(app.selectedTaskIDs());  // e.g., {"scenario_id": 1, "location": "48"} -> [1, "48]
+    const variable = state.target_variables.filter((obj) => obj.value === uiState.selected_target_var)[0].plot_text;
+    const taskIdVals = Object.values(uiState.selected_task_ids);  // e.g., {"scenario_id": 1, "location": "48"} -> [1, "48"]
     return {
         autosize: true,
         showlegend: false,
         title: {
-            text: `Forecasts of ${variable} <br> in ${taskIdVals} as of ${app.uiState.selected_as_of_date}`,
+            text: `Forecasts of ${variable} <br> in ${taskIdVals} as of ${uiState.selected_as_of_date}`,
             x: 0.5,
             y: 0.90,
             xanchor: 'center',

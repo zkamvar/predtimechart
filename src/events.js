@@ -9,9 +9,9 @@ function addEventHandlers(app, userEnsembleModel) {
         app.eventHandlers['targetVariableSelected'](app, this.value);
     });
     Object.keys(app.state.task_ids).forEach(function (taskIdKey) {
-        const $taskIdSelect = $(`#${taskIdKey}`);  // created by _createUIElements()
+        const $taskIdSelect = $(`#${taskIdKey}`);  // created by `createDomElements()`
         $taskIdSelect.change(function () {
-            app.eventHandlers['taskIdSelected'](app, this.value);
+            app.eventHandlers['taskIdsSelected'](app, _selectedTaskIDs(app));
         });
     });
     $('#intervals').change(function () {
@@ -93,6 +93,18 @@ function addEventHandlers(app, userEnsembleModel) {
             app.eventHandlers['incrementAsOf'](app);
         }
     });
+}
+
+
+// returns the value(s) of the task ID <SELECT>(s) as an object similar to format of initial_task_ids, e.g.,
+// {"scenario_id": 1, "location": "48"}
+function _selectedTaskIDs(app) {
+    const selectedTaskIDs = {};  // return value. filled next
+    Object.keys(app.state.task_ids).forEach(function (taskIdKey) {
+        const $taskIdSelect = $(`#${taskIdKey}`);  // created by `createDomElements()`
+        selectedTaskIDs[taskIdKey] = $taskIdSelect.val();
+    });
+    return selectedTaskIDs;
 }
 
 

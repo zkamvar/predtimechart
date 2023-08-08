@@ -90,6 +90,7 @@ const App = {
 
     uiState: {
         selected_target_var: '',
+        selected_task_ids: {},  // currently-selected task IDs - an object formatted like `initial_task_ids`, ex: {"scenario_id": 1, "location": "48"}
         selected_interval: '',
         selected_as_of_date: '',
         selected_truth: ['Current Truth', 'Truth as of'],
@@ -178,6 +179,7 @@ const App = {
             '#f0f921'
         ]).flat()
         this.uiState.selected_target_var = options['initial_target_var'];
+        this.uiState.selected_task_ids = options['initial_task_ids'];
         this.uiState.selected_interval = options['initial_interval'];
         this.uiState.selected_as_of_date = options['initial_as_of'];
         // this.uiState.selected_truth: synchronized via default <input ... checked> setting
@@ -210,7 +212,7 @@ const App = {
 
         console.log('initialize(): initializing UI');
         createDomElements(componentDiv, this.isUemEnabled, Object.keys(this.state.task_ids));
-        this.initializeUI(options);
+        this.initializeUI();
 
         // wire up UI controls (event handlers)
         addEventHandlers(this, USER_ENSEMBLE_MODEL);
@@ -222,10 +224,10 @@ const App = {
         console.log('initialize(): done');
     },
 
-    initializeUI(options) {
+    initializeUI() {
         // populate options and models list (left column)
         this.initializeTargetVarsUI();
-        this.initializeTaskIDsUI(options['initial_task_ids']);
+        this.initializeTaskIDsUI();
         this.initializeIntervalsUI();
         this.updateModelsList();
 
@@ -268,11 +270,12 @@ const App = {
         });
     },
 
-    initializeTaskIDsUI(initialTaskIds) {
+    initializeTaskIDsUI() {
         // populate task ID-related <SELECT>s
         const thisState = this.state;
+        const initialTaskIds = this.uiState.selected_task_ids;
         Object.keys(this.state.task_ids).forEach(function (taskIdKey) {
-            const $taskIdSelect = $(`#${taskIdKey}`);  // created by _createUIElements()
+            const $taskIdSelect = $(`#${taskIdKey}`);  // created by `createDomElements()`
             // $taskIdSelect.empty();
             const taskIdValueObjs = thisState.task_ids[taskIdKey];
             taskIdValueObjs.forEach(taskIdValueObj => {
@@ -355,17 +358,6 @@ const App = {
         });
     },
 
-    // returns the value(s) of the task ID <SELECT>(s) as an object similar to format of initial_task_ids, e.g.,
-    // {"scenario_id": 1, "location": "48"}
-    selectedTaskIDs() {
-        const theSelectedTaskIDs = {};  // return value. filled next
-        Object.keys(this.state.task_ids).forEach(function (taskIdKey) {
-            const $taskIdSelect = $(`#${taskIdKey}`);  // created by _createUIElements()
-            theSelectedTaskIDs[taskIdKey] = $taskIdSelect.val();
-        });
-        return theSelectedTaskIDs;
-    },
-
     //
     // date fetch-related functions
     //
@@ -419,7 +411,7 @@ const App = {
     fetchCurrentTruth() {
         this.state.current_truth = [];  // clear in case of error
         return this._fetchData(false,  // Promise
-            this.uiState.selected_target_var, this.selectedTaskIDs(), this.state.current_date)
+            this.uiState.selected_target_var, this.uiState.selected_task_ids, this.state.current_date)
             .then(response => response.json())
             .then((data) => {
                 this.state.current_truth = data;
@@ -430,7 +422,7 @@ const App = {
     fetchAsOfTruth() {
         this.state.as_of_truth = [];  // clear in case of error
         return this._fetchData(false,  // Promise
-            this.uiState.selected_target_var, this.selectedTaskIDs(), this.uiState.selected_as_of_date)
+            this.uiState.selected_target_var, this.uiState.selected_task_ids, this.uiState.selected_as_of_date)
             .then(response => response.json())
             .then((data) => {
                 this.state.as_of_truth = data;
@@ -441,7 +433,7 @@ const App = {
     fetchForecasts() {
         this.state.forecasts = {};  // clear in case of error
         return this._fetchData(true,  // Promise
-            this.uiState.selected_target_var, this.selectedTaskIDs(), this.uiState.selected_as_of_date)
+            this.uiState.selected_target_var, this.uiState.selected_task_ids, this.uiState.selected_as_of_date)
             .then(response => response.json())  // Promise
             .then((data) => {
                 this.state.forecasts = data;
@@ -557,7 +549,8 @@ App.eventHandlers['targetVariableSelected'] = function (app, selectedTargetVar) 
     app.fetchDataUpdatePlot(true, true, false);
 };
 
-App.eventHandlers['taskIdSelected'] = function (app, selectedTaskId) {
+App.eventHandlers['taskIdsSelected'] = function (app, selectedTaskIds) {
+    app.uiState.selected_task_ids = selectedTaskIds;  // write
     app.fetchDataUpdatePlot(true, true, false);
 };
 
