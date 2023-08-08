@@ -2,6 +2,8 @@
 // Functions that abstract out DOM management for the app.
 //
 
+import {closestYear} from "./utils.js";
+
 /**
  * UI helper that creates the two modals usedto view and edit user ensemble model.
  */
@@ -165,6 +167,40 @@ function createDomElements(componentDiv, isUemEnabled, taskIdsKeys) {
 }
 
 
+function initializeDateRangePicker(app) {
+    const appState = app.state;
+    const appUIState = app.uiState;
+
+    // initialize https://www.daterangepicker.com/ . regarding the jquery selector for the above icon, the svg is:
+    // <a rel="tooltip" class="modebar-btn" data-title="Jump to As_Of" data-attr="my attr" data-val="my val" data-toggle="false" data-gravity="n">
+    const $icon = $("[data-title='Jump to As_Of']");  // NB: couldn't get this to work: $(".modebar-btn [data-title='Jump to As_Of']");
+    const available_as_ofs = appState.available_as_ofs[appUIState.selected_target_var];
+    $icon.daterangepicker({  // we use below 'apply.daterangepicker' instead of a callback to get more control, esp. to receive "today" clicks
+        singleDatePicker: true,
+        showDropdowns: true,
+        minYear: parseInt(available_as_ofs[0].slice(0, 4)),
+        maxYear: parseInt(available_as_ofs.at(-1).slice(0, 4)),
+    });
+    $icon.on('apply.daterangepicker', function (ev, picker) {
+        // save and reset picked date to today (o/w stays on picked date)
+        const pickedDate = picker.startDate.format('YYYY-MM-DD');
+        picker.setStartDate(new Date());
+        picker.setEndDate(new Date());
+
+        const availableAsOfs = appState.available_as_ofs[appUIState.selected_target_var];
+        const closestAsOf = closestYear(pickedDate, availableAsOfs);
+        console.debug(`apply.daterangepicker: pickedDate=${pickedDate}, closestAsOf=${closestAsOf}, selected_as_of_date=${appUIState.selected_as_of_date}, diff=${closestAsOf !== appUIState.selected_as_of_date}`);
+
+        // go to picked date if different from current
+        if (closestAsOf !== appUIState.selected_as_of_date) {
+            appUIState.selected_as_of_date = closestAsOf;  // write
+            app.fetchDataUpdatePlot(true, false, true);
+            app.updateTruthAsOfCheckboxText();
+        }
+    });
+}
+
+
 // export
 
-export {initializeUEMModals, createDomElements};
+export {initializeUEMModals, createDomElements, initializeDateRangePicker};

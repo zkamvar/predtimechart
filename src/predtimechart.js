@@ -2,9 +2,9 @@
  * predtimechart: A JavaScript (ES6 ECMAScript) module for forecast visualization.
  */
 
-import {addEventHandlers, addModelCheckEventHandler, initializeDateRangePicker} from "./events.js";
+import {addEventHandlers, addModelCheckEventHandler} from "./events.js";
 import {getPlotlyData, getPlotlyLayout} from "./plot.js";
-import {createDomElements, initializeUEMModals} from "./ui.js";
+import {initializeUEMModals, createDomElements, initializeDateRangePicker} from "./ui.js";
 import _calcUemForecasts from './user-ensemble-model.js';
 import {_isInvalidUemName, download} from "./utils.js";
 import _validateOptions from './validation.js';
@@ -447,7 +447,8 @@ const App = {
 
     /**
      * Creates a user ensemble model (UEM) named USER_ENSEMBLE_MODEL.name using the currently-selected models in
-     * #forecastViz_select_model. Does not call removeUserEnsembleModel() first.
+     * #forecastViz_select_model and then updates this.state.models and this.uiState.selected_models. Does not call
+     * removeUserEnsembleModel() first. Does not call updateModelsList() or updatePlot() after.
      */
     addUserEnsembleModel() {
         // validate componentModels: there must be at least two
@@ -488,7 +489,8 @@ const App = {
     },
 
     /**
-     * Removes the user ensemble model (UEM) named USER_ENSEMBLE_MODEL.name, if any.
+     * Removes the user ensemble model (UEM) named USER_ENSEMBLE_MODEL.name, if any. Like addUserEnsembleModel(), only
+     * updates this.state.models and this.uiState.selected_models variables.
      */
     removeUserEnsembleModel() {
         delete this.state.forecasts[USER_ENSEMBLE_MODEL.name];
