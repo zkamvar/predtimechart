@@ -7,13 +7,13 @@ function getPlotlyLayout(app) {
         return {};
     }
 
-    const variable = app.state.target_variables.filter((obj) => obj.value === app.state.selected_target_var)[0].plot_text;
+    const variable = app.state.target_variables.filter((obj) => obj.value === app.uiState.selected_target_var)[0].plot_text;
     const taskIdVals = Object.values(app.selectedTaskIDs());  // e.g., {"scenario_id": 1, "location": "48"} -> [1, "48]
     return {
         autosize: true,
         showlegend: false,
         title: {
-            text: `Forecasts of ${variable} <br> in ${taskIdVals} as of ${app.state.selected_as_of_date}`,
+            text: `Forecasts of ${variable} <br> in ${taskIdVals} as of ${app.uiState.selected_as_of_date}`,
             x: 0.5,
             y: 0.90,
             xanchor: 'center',
@@ -33,8 +33,9 @@ function getPlotlyLayout(app) {
 
 function getPlotlyData(app) {
     const state = app.state;
+    const uiState = app.uiState;
     let pd = [];
-    if (state.selected_truth.includes('Current Truth') && Object.keys(state.current_truth).length !== 0) {
+    if (uiState.selected_truth.includes('Current Truth') && Object.keys(state.current_truth).length !== 0) {
         pd.push({
             x: state.current_truth.date,
             y: state.current_truth.y,
@@ -44,14 +45,14 @@ function getPlotlyData(app) {
             marker: {color: 'darkgray'}
         })
     }
-    if (state.selected_truth.includes('Truth as of') && Object.keys(state.as_of_truth).length !== 0) {
+    if (uiState.selected_truth.includes('Truth as of') && Object.keys(state.as_of_truth).length !== 0) {
         pd.push({
             x: state.as_of_truth.date,
             y: state.as_of_truth.y,
             type: 'scatter',
             mode: 'lines',
             opacity: 0.5,
-            name: `Truth as of ${state.selected_as_of_date}`,
+            name: `Truth as of ${uiState.selected_as_of_date}`,
             marker: {color: 'black'}
         })
     }
@@ -60,7 +61,7 @@ function getPlotlyData(app) {
     if (state.forecasts.length !== 0) {
         // add the line for predictive medians
         pd0 = Object.keys(state.forecasts).map((model) => {
-            if (state.selected_models.includes(model)) {
+            if (uiState.selected_models.includes(model)) {
                 const index = state.models.indexOf(model)
                 const model_forecasts = state.forecasts[model]
                 const date = model_forecasts.target_end_date
@@ -117,7 +118,7 @@ function getPlotlyData(app) {
                     name: model,
                     hovermode: false,
                     opacity: 0.7,
-                    line: {color: state.colors[index]},
+                    line: {color: uiState.colors[index]},
                     hoverinfo: 'none'
                 };
             }
@@ -130,9 +131,9 @@ function getPlotlyData(app) {
     let pd1 = []
     if (state.forecasts.length !== 0) {
         pd1 = Object.keys(state.forecasts).map((model) => {  // notes that state.forecasts are still sorted
-            if (state.selected_models.includes(model)) {
+            if (uiState.selected_models.includes(model)) {
                 const index = state.models.indexOf(model)
-                const is_hosp = state.selected_target_var === 'hosp'
+                const is_hosp = uiState.selected_target_var === 'hosp'
                 const mode = is_hosp ? 'lines' : 'lines+markers'
                 const model_forecasts = state.forecasts[model]
                 let upper_quantile
@@ -145,13 +146,13 @@ function getPlotlyData(app) {
                     name: model,
                     opacity: 0.7,
                     mode,
-                    line: {color: state.colors[index]}
+                    line: {color: uiState.colors[index]}
                 }
 
-                if (state.selected_interval === '50%') {
+                if (uiState.selected_interval === '50%') {
                     lower_quantile = 'q0.25'
                     upper_quantile = 'q0.75'
-                } else if (state.selected_interval === '95%') {
+                } else if (uiState.selected_interval === '95%') {
                     lower_quantile = 'q0.025'
                     upper_quantile = 'q0.975'
                 } else {
@@ -174,7 +175,7 @@ function getPlotlyData(app) {
                         x: [].concat(x, x.slice().reverse()),
                         y: [].concat(y1, y2.slice().reverse()),
                         fill: 'toself',
-                        fillcolor: state.colors[index],
+                        fillcolor: uiState.colors[index],
                         opacity: 0.3,
                         line: {color: 'transparent'},
                         type: 'scatter',

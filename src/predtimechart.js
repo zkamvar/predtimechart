@@ -85,6 +85,21 @@ const App = {
 
 
     //
+    // UI state (dynamic - updated by DOM as user interacts)
+    //
+
+    uiState: {
+        selected_target_var: '',
+        selected_interval: '',
+        selected_as_of_date: '',
+        selected_truth: ['Current Truth', 'Truth as of'],
+        selected_models: [],
+        last_selected_models: [],  // last manually-selected models. used by "Select Models" checkbox
+        colors: [],
+    },
+
+
+    //
     // app state
     //
 
@@ -97,19 +112,9 @@ const App = {
         current_date: "",
         models: [],
         disclaimer: "",
-
-        // Dynamic/updated data, used to track 2 categories:
-        // 1/2 Tracks UI state:
-        selected_target_var: '',
-        selected_interval: '',
-        selected_as_of_date: '',
-        selected_truth: ['Current Truth', 'Truth as of'],
-        selected_models: [],
-        last_selected_models: [],  // last manually-selected models. used by "Select Models" checkbox
-        colors: [],
         initial_xaxis_range: null,  // optional initialize() options object key
 
-        // 2/2 Data used to create plots:
+        // Dynamic Data, used to create plots:
         current_truth: [],
         as_of_truth: [],
         forecasts: {},
@@ -157,7 +162,7 @@ const App = {
         this.state.current_date = options['current_date'];
         this.state.models = options['models'];
         this.state.disclaimer = options['disclaimer'];
-        this.state.colors = Array(parseInt(this.state.models.length / 10, 10) + 1).fill([
+        this.uiState.colors = Array(parseInt(this.state.models.length / 10, 10) + 1).fill([
             '#0d0887',
             '#46039f',
             '#7201a8',
@@ -172,11 +177,11 @@ const App = {
         this.state.initial_xaxis_range = options.hasOwnProperty('initial_xaxis_range') ? options['initial_xaxis_range'] : null;
 
         // save initial selected state
-        this.state.selected_target_var = options['initial_target_var'];
-        this.state.selected_interval = options['initial_interval'];
-        this.state.selected_as_of_date = options['initial_as_of'];
-        // this.state.selected_truth: synchronized via default <input ... checked> setting
-        this.state.selected_models = options['initial_checked_models'];
+        this.uiState.selected_target_var = options['initial_target_var'];
+        this.uiState.selected_interval = options['initial_interval'];
+        this.uiState.selected_as_of_date = options['initial_as_of'];
+        // this.uiState.selected_truth: synchronized via default <input ... checked> setting
+        this.uiState.selected_models = options['initial_checked_models'];
 
         // populate UI elements, setting selection state to initial
         initializeUEMModals();  // done here instead of initializeUI() so below `modal('show')` will work
@@ -255,7 +260,7 @@ const App = {
         // initialize https://www.daterangepicker.com/ . regarding the jquery selector for the above icon, the svg is:
         // <a rel="tooltip" class="modebar-btn" data-title="Jump to As_Of" data-attr="my attr" data-val="my val" data-toggle="false" data-gravity="n">
         const $icon = $("[data-title='Jump to As_Of']");  // NB: couldn't get this to work: $(".modebar-btn [data-title='Jump to As_Of']");
-        const available_as_ofs = App.state.available_as_ofs[App.state.selected_target_var];
+        const available_as_ofs = App.state.available_as_ofs[App.uiState.selected_target_var];
         $icon.daterangepicker({  // we use below 'apply.daterangepicker' instead of a callback to get more control, esp. to receive "today" clicks
             singleDatePicker: true,
             showDropdowns: true,
@@ -264,17 +269,17 @@ const App = {
         });
         $icon.on('apply.daterangepicker', function (ev, picker) {
             const pickedDate = picker.startDate.format('YYYY-MM-DD');
-            const availableAsOfs = App.state.available_as_ofs[App.state.selected_target_var];
+            const availableAsOfs = App.state.available_as_ofs[App.uiState.selected_target_var];
             const closestAsOf = closestYear(pickedDate, availableAsOfs);
-            console.debug(`apply.daterangepicker: pickedDate=${pickedDate}, closestAsOf=${closestAsOf}, selected_as_of_date=${App.state.selected_as_of_date}, diff=${closestAsOf !== App.state.selected_as_of_date}`);
+            console.debug(`apply.daterangepicker: pickedDate=${pickedDate}, closestAsOf=${closestAsOf}, selected_as_of_date=${App.uiState.selected_as_of_date}, diff=${closestAsOf !== App.uiState.selected_as_of_date}`);
 
             // reset picked date to today (o/w stays on picked date)
             picker.setStartDate(new Date());
             picker.setEndDate(new Date());
 
             // go to picked date if different from current
-            if (closestAsOf !== App.state.selected_as_of_date) {
-                App.state.selected_as_of_date = closestAsOf;
+            if (closestAsOf !== App.uiState.selected_as_of_date) {
+                App.uiState.selected_as_of_date = closestAsOf;
                 App.fetchDataUpdatePlot(true, false, true);
                 App.updateTruthAsOfCheckboxText();
             }
@@ -285,10 +290,10 @@ const App = {
     initializeTargetVarsUI() {
         // populate the target variable <SELECT>
         const $targetVarsSelect = $("#target_variable");
-        const thisState = this.state;
+        const thisUIState = this.uiState;
         // $targetVarsSelect.empty();
         this.state.target_variables.forEach(function (targetVar) {
-            const selected = targetVar.value === thisState.selected_target_var ? 'selected' : '';
+            const selected = targetVar.value === thisUIState.selected_target_var ? 'selected' : '';
             const optionNode = `<option value="${targetVar.value}" ${selected} >${targetVar.text}</option>`;
             $targetVarsSelect.append(optionNode);
         });
@@ -312,10 +317,10 @@ const App = {
     initializeIntervalsUI() {
         // populate the interval <SELECT>
         const $intervalsSelect = $("#intervals");
-        const thisState = this.state;
+        const thisUIState = this.uiState;
         // $intervalsSelect.empty();
         this.state.intervals.forEach(function (interval) {
-            const selected = interval === thisState.selected_interval ? 'selected' : '';
+            const selected = interval === thisUIState.selected_interval ? 'selected' : '';
             const optionNode = `<option value="${interval}" ${selected} >${interval}</option>`;
             $intervalsSelect.append(optionNode);
         });
@@ -325,6 +330,7 @@ const App = {
         // populate the select model div
         const $selectModelDiv = $("#forecastViz_select_model");
         const thisState = this.state;
+        const thisUIState = this.uiState;
         $selectModelDiv.empty();
 
         // split models into two groups: those with forecasts (enabled, colored) and those without (disabled, gray)
@@ -334,9 +340,9 @@ const App = {
                 return App.state.forecasts.hasOwnProperty(model);
             })
             .forEach(function (model) {
-                const isChecked = (thisState.selected_models.indexOf(model) > -1);
+                const isChecked = (thisUIState.selected_models.indexOf(model) > -1);
                 const modelIdx = thisState.models.indexOf(model);
-                $selectModelDiv.append(_selectModelDiv(model, thisState.colors[modelIdx], true, isChecked));
+                $selectModelDiv.append(_selectModelDiv(model, thisUIState.colors[modelIdx], true, isChecked));
             });
 
         // 2. add models without forecasts
@@ -345,7 +351,7 @@ const App = {
                 return !App.state.forecasts.hasOwnProperty(model);
             })
             .forEach(function (model) {
-                const isChecked = (thisState.selected_models.indexOf(model) > -1);
+                const isChecked = (thisUIState.selected_models.indexOf(model) > -1);
                 $selectModelDiv.append(_selectModelDiv(model, 'grey', false, isChecked));
             });
 
@@ -362,27 +368,29 @@ const App = {
     //
 
     incrementAsOf() {
-        const state = this.state;
-        const as_of_index = state.available_as_ofs[state.selected_target_var].indexOf(state.selected_as_of_date);
-        if (as_of_index < state.available_as_ofs[state.selected_target_var].length - 1) {
-            state.selected_as_of_date = state.available_as_ofs[state.selected_target_var][as_of_index + 1];
+        const thisState = this.state;
+        const thisUIState = this.uiState;
+        const as_of_index = thisState.available_as_ofs[thisUIState.selected_target_var].indexOf(thisUIState.selected_as_of_date);
+        if (as_of_index < thisState.available_as_ofs[thisUIState.selected_target_var].length - 1) {
+            thisUIState.selected_as_of_date = thisState.available_as_ofs[thisUIState.selected_target_var][as_of_index + 1];
             this.fetchDataUpdatePlot(true, false, true);
             this.updateTruthAsOfCheckboxText();
         }
     },
 
     decrementAsOf() {
-        const state = this.state;
-        const as_of_index = state.available_as_ofs[state.selected_target_var].indexOf(state.selected_as_of_date);
+        const thisState = this.state;
+        const thisUIState = this.uiState;
+        const as_of_index = thisState.available_as_ofs[thisUIState.selected_target_var].indexOf(thisUIState.selected_as_of_date);
         if (as_of_index > 0) {
-            state.selected_as_of_date = state.available_as_ofs[state.selected_target_var][as_of_index - 1];
+            thisUIState.selected_as_of_date = thisState.available_as_ofs[thisUIState.selected_target_var][as_of_index - 1];
             this.fetchDataUpdatePlot(true, false, true);
             this.updateTruthAsOfCheckboxText();
         }
     },
 
     updateTruthAsOfCheckboxText() {
-        $("#asOfTruthDate").text(`As of ${this.state.selected_as_of_date}`);
+        $("#asOfTruthDate").text(`As of ${this.uiState.selected_as_of_date}`);
     },
 
     // Returns an array of models that are not grayed out.
@@ -465,7 +473,7 @@ const App = {
     fetchCurrentTruth() {
         this.state.current_truth = [];  // clear in case of error
         return this._fetchData(false,  // Promise
-            this.state.selected_target_var, this.selectedTaskIDs(), this.state.current_date)
+            this.uiState.selected_target_var, this.selectedTaskIDs(), this.state.current_date)
             .then(response => response.json())
             .then((data) => {
                 this.state.current_truth = data;
@@ -476,7 +484,7 @@ const App = {
     fetchAsOfTruth() {
         this.state.as_of_truth = [];  // clear in case of error
         return this._fetchData(false,  // Promise
-            this.state.selected_target_var, this.selectedTaskIDs(), this.state.selected_as_of_date)
+            this.uiState.selected_target_var, this.selectedTaskIDs(), this.uiState.selected_as_of_date)
             .then(response => response.json())
             .then((data) => {
                 this.state.as_of_truth = data;
@@ -487,7 +495,7 @@ const App = {
     fetchForecasts() {
         this.state.forecasts = {};  // clear in case of error
         return this._fetchData(true,  // Promise
-            this.state.selected_target_var, this.selectedTaskIDs(), this.state.selected_as_of_date)
+            this.uiState.selected_target_var, this.selectedTaskIDs(), this.uiState.selected_as_of_date)
             .then(response => response.json())  // Promise
             .then((data) => {
                 this.state.forecasts = data;
@@ -505,7 +513,7 @@ const App = {
      */
     addUserEnsembleModel() {
         // validate componentModels: there must be at least two
-        const componentModels = this.state.selected_models.filter(function (value) {
+        const componentModels = this.uiState.selected_models.filter(function (value) {
             return value !== USER_ENSEMBLE_MODEL.name;
         });
 
@@ -533,8 +541,8 @@ const App = {
         if (!this.state.models.includes(USER_ENSEMBLE_MODEL.name)) {
             this.state.models.unshift(USER_ENSEMBLE_MODEL.name);  // add to front so sorts at top of models list
         }
-        if (!this.state.selected_models.includes(USER_ENSEMBLE_MODEL.name)) {
-            this.state.selected_models.push(USER_ENSEMBLE_MODEL.name);
+        if (!this.uiState.selected_models.includes(USER_ENSEMBLE_MODEL.name)) {
+            this.uiState.selected_models.push(USER_ENSEMBLE_MODEL.name);
         }
         USER_ENSEMBLE_MODEL.models.length = 0;  // quick way to clear an array
         USER_ENSEMBLE_MODEL.models.push(...componentModels);
@@ -547,7 +555,7 @@ const App = {
     removeUserEnsembleModel() {
         delete this.state.forecasts[USER_ENSEMBLE_MODEL.name];
         this.state.models = this.state.models.filter(item => item !== USER_ENSEMBLE_MODEL.name)
-        this.state.selected_models = this.state.selected_models.filter(item => item !== USER_ENSEMBLE_MODEL.name)
+        this.uiState.selected_models = this.uiState.selected_models.filter(item => item !== USER_ENSEMBLE_MODEL.name)
         USER_ENSEMBLE_MODEL.models.length = 0;  // quick way to clear an array
         USER_ENSEMBLE_MODEL.lastError = null;
     },
@@ -599,7 +607,7 @@ const App = {
 //
 
 App.eventHandlers['targetVariableSelected'] = function (app, selectedTargetVar) {
-    app.state.selected_target_var = selectedTargetVar;
+    app.uiState.selected_target_var = selectedTargetVar;
     app.fetchDataUpdatePlot(true, true, false);
 };
 
@@ -608,23 +616,23 @@ App.eventHandlers['taskIdSelected'] = function (app, selectedTaskId) {
 };
 
 App.eventHandlers['intervalSelected'] = function (app, selectedInterval) {
-    app.state.selected_interval = selectedInterval;
+    app.uiState.selected_interval = selectedInterval;
     app.fetchDataUpdatePlot(false, null, true);
 };
 
 App.eventHandlers['truthsSelected'] = function (app, selectedTruths) {
-    app.state.selected_truth = selectedTruths;
+    app.uiState.selected_truth = selectedTruths;
     app.fetchDataUpdatePlot(false, null, true);
 };
 
 App.eventHandlers['shuffleColors'] = function (app) {
-    app.state.colors = app.state.colors.sort(() => 0.5 - Math.random())
+    app.uiState.colors = app.uiState.colors.sort(() => 0.5 - Math.random())
     app.updateModelsList();
     app.updatePlot(true);
 };
 
 App.eventHandlers['addUserEnsemble'] = function (app) {
-    console.debug("addUserEnsemble click", app.state.selected_models);
+    console.debug("addUserEnsemble click", app.uiState.selected_models);
     app.removeUserEnsembleModel();
     app.addUserEnsembleModel();
     app.updateModelsList();
@@ -650,9 +658,9 @@ App.eventHandlers['removeUserEnsemble'] = function (app) {
 };
 
 App.eventHandlers['downloadUserEnsemble'] = function (app, userEnsembleModel) {
-    console.debug("#downloadUserEnsemble click", userEnsembleModel.models, app.state.selected_target_var, app.state.selected_as_of_date);
+    console.debug("#downloadUserEnsemble click", userEnsembleModel.models, app.uiState.selected_target_var, app.uiState.selected_as_of_date);
     let fileName = '';
-    app._calcUemForecasts(userEnsembleModel.models, app.state.selected_target_var, app.state.selected_as_of_date, userEnsembleModel.name)  // Promise
+    app._calcUemForecasts(userEnsembleModel.models, app.uiState.selected_target_var, app.uiState.selected_as_of_date, userEnsembleModel.name)  // Promise
         .then(response => {
             if (!response.ok) {
                 console.error('#downloadUserEnsemble click: bad response', response);
@@ -742,12 +750,12 @@ App.eventHandlers['uemEditSaveModelName'] = function (app, userEnsembleModel, ne
 
 App.eventHandlers['selectModels'] = function (app, isChecked) {
     if (isChecked) {
-        app.state.last_selected_models = app.state.selected_models;
-        app.state.selected_models = app.selectableModels();
+        app.uiState.last_selected_models = app.uiState.selected_models;
+        app.uiState.selected_models = app.selectableModels();
     } else {
-        app.state.selected_models = app.state.last_selected_models;
+        app.uiState.selected_models = app.uiState.last_selected_models;
     }
-    app.checkModels(app.state.selected_models);
+    app.checkModels(app.uiState.selected_models);
     app.updatePlot(true);
 };
 
@@ -760,13 +768,13 @@ App.eventHandlers['incrementAsOf'] = function (app) {
 };
 
 App.eventHandlers['modelChecked'] = function (app, model, isChecked) {
-    const isInSelectedModels = (app.state.selected_models.indexOf(model) > -1);
+    const isInSelectedModels = (app.uiState.selected_models.indexOf(model) > -1);
     if (isChecked && !isInSelectedModels) {
-        app.state.selected_models.push(model);
+        app.uiState.selected_models.push(model);
     } else if (!isChecked && isInSelectedModels) {
-        app.state.selected_models = app.state.selected_models.filter(function (value) {
+        app.uiState.selected_models = app.uiState.selected_models.filter(function (value) {
             return value !== model;
-        });  // app.state.selected_models.remove(model);
+        });  // app.uiState.selected_models.remove(model);
     }
     app.fetchDataUpdatePlot(false, null, true);
 };
