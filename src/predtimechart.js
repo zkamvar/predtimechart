@@ -6,7 +6,7 @@ import {addEventHandlers, addModelCheckEventHandler} from "./events.js";
 import {getPlotlyData, getPlotlyLayout} from "./plot.js";
 import {createDomElements, initializeUEMModals} from "./ui.js";
 import _calcUemForecasts from './user-ensemble-model.js';
-import {closestYear} from "./utils.js";
+import {_isInvalidUemName, closestYear, download} from "./utils.js";
 import _validateOptions from './validation.js';
 
 
@@ -76,6 +76,12 @@ const App = {
 
     _calcUemForecasts: null,  // user ensemble model computation function as documented in `initialize()`
     isUemEnabled: true,       // true if user ensemble model feature is enabled
+
+
+    //
+    // app event handling
+    //
+    eventHandlers: {},  // maps eventName -> function as defined by `addEventHandlers()`. filled below
 
 
     //
@@ -587,5 +593,185 @@ const App = {
     },
 };
 
+
+//
+// set up event handlers (called by `addEventHandlers()`)
+//
+
+App.eventHandlers['targetVariableSelected'] = function (app, selectedTargetVar) {
+    app.state.selected_target_var = selectedTargetVar;
+    app.fetchDataUpdatePlot(true, true, false);
+};
+
+App.eventHandlers['taskIdSelected'] = function (app, selectedTaskId) {
+    app.fetchDataUpdatePlot(true, true, false);
+};
+
+App.eventHandlers['intervalSelected'] = function (app, selectedInterval) {
+    app.state.selected_interval = selectedInterval;
+    app.fetchDataUpdatePlot(false, null, true);
+};
+
+App.eventHandlers['truthsSelected'] = function (app, selectedTruths) {
+    app.state.selected_truth = selectedTruths;
+    app.fetchDataUpdatePlot(false, null, true);
+};
+
+App.eventHandlers['shuffleColors'] = function (app) {
+    app.state.colors = app.state.colors.sort(() => 0.5 - Math.random())
+    app.updateModelsList();
+    app.updatePlot(true);
+};
+
+App.eventHandlers['addUserEnsemble'] = function (app) {
+    console.debug("addUserEnsemble click", app.state.selected_models);
+    app.removeUserEnsembleModel();
+    app.addUserEnsembleModel();
+    app.updateModelsList();
+    app.updatePlot(true);
+
+    // todo xx these should be calls to an events.js function!:
+    $("#removeUserEnsemble").removeClass('disabled');    // enable
+    $("#downloadUserEnsemble").removeClass('disabled');  // ""
+    $("#infoUserEnsemble").removeClass('disabled');      // ""
+    $("#editNameUserEnsemble").addClass('disabled');     // disable
+};
+
+App.eventHandlers['removeUserEnsemble'] = function (app) {
+    app.removeUserEnsembleModel();
+    app.updateModelsList();
+    app.updatePlot(true);
+
+    // todo xx these should be calls to an events.js function!:
+    $("#removeUserEnsemble").addClass('disabled');       // disable
+    $("#downloadUserEnsemble").addClass('disabled');     // ""
+    $("#infoUserEnsemble").addClass('disabled');         // ""
+    $("#editNameUserEnsemble").removeClass('disabled');  // enable
+};
+
+App.eventHandlers['downloadUserEnsemble'] = function (app, userEnsembleModel) {
+    console.debug("#downloadUserEnsemble click", userEnsembleModel.models, app.state.selected_target_var, app.state.selected_as_of_date);
+    let fileName = '';
+    app._calcUemForecasts(userEnsembleModel.models, app.state.selected_target_var, app.state.selected_as_of_date, userEnsembleModel.name)  // Promise
+        .then(response => {
+            if (!response.ok) {
+                console.error('#downloadUserEnsemble click: bad response', response);
+                return response.text().then(text => {
+                    throw new Error(text);
+                })
+            }
+
+            // contentDisposition is like: "attachment; filename=\"2022-01-29-User-Ensemble.csv\""
+            const contentDisposition = Object.fromEntries(response.headers)['content-disposition'];
+            fileName = contentDisposition.split('"')[1];
+            return response.text();
+        })
+        .then((text) => {
+            console.debug("#downloadUserEnsemble click: data", typeof (text), fileName);
+            download(text, 'text/csv', fileName);
+            console.debug("#downloadUserEnsemble click: download() done");
+
+            // configure and show the info modal
+            // todo xx these should be calls to an events.js function!:
+            $('#uemInfoModalTitle').html('CSV File Downloaded');
+            $('#uemInfoModalBody').html(`User ensemble downloaded to "${fileName}".`);
+            $('#uemInfoModal').modal('show');
+        })
+        .catch(error => {  // NB: fetch() does not generate an error for 4__ responses
+            console.error(`#downloadUserEnsemble click: error: ${error.message}`)
+
+            // configure and show the info modal
+            // todo xx these should be calls to an events.js function!:
+            $('#uemInfoModalTitle').html('Error Downloading CVS File');
+            $('#uemInfoModalBody').html(`"${error.message}"`);
+            $('#uemInfoModal').modal('show');
+        });
+};
+
+App.eventHandlers['infoUserEnsemble'] = function (app, userEnsembleModel) {
+    // configure and show the info modal
+    const modelName = userEnsembleModel.name;
+    const componentModels = userEnsembleModel.models.join(", ");
+    const lastError = (userEnsembleModel.lastError === null) ? '(no errors)' : userEnsembleModel.lastError;
+
+    // todo xx these should be calls to an events.js function!:
+    const $userInfoForm = $(
+        '<form>\n' +
+        '  <div class="form-group">\n' +
+        '    <label for="model-name" class="col-form-label">Model name:</label>\n' +
+        `    <input type="text" class="form-control" id="model-name" readonly value="${modelName}">\n` +
+        '  </div>\n' +
+        '  <div class="form-group">\n' +
+        '    <label for="model-list" class="col-form-label">Component models:</label>\n' +
+        `    <input type="text" class="form-control" id="model-list" readonly value="${componentModels}">\n` +
+        '  </div>\n' +
+        '  <div class="form-group">\n' +
+        '    <label for="last-error" class="col-form-label">Last error:</label>\n' +
+        `    <textarea class="form-control" id="last-error" readonly>${lastError}</textarea>\n` +
+        '  </div>\n' +
+        '</form>'
+    );
+    $('#uemInfoModalTitle').html('User Ensemble Settings');
+    $('#uemInfoModalBody').html($userInfoForm);
+    $('#uemInfoModal').modal('show');
+};
+
+App.eventHandlers['uemEditModelNameInput'] = function (app) {
+    // validate model name edit on each keystroke, displaying the result:
+    // todo xx these should be calls to an events.js function!:
+    const modelName = $('#uemEditModelName').val();
+    const isInvalid = _isInvalidUemName(app.state.models, modelName);  // error message if invalid; false if valid
+    const $invalidFeedbackDiv = $('#uemEditModelNameModal .invalid-feedback');
+    const $modelNameInput = $('#uemEditModelNameModal input');
+    if (isInvalid) {
+        $invalidFeedbackDiv.html(isInvalid);
+        $invalidFeedbackDiv.show();
+        $modelNameInput.addClass('is-invalid')
+    } else {
+        $invalidFeedbackDiv.html('');
+        $invalidFeedbackDiv.hide();
+        $modelNameInput.removeClass('is-invalid')
+    }
+};
+
+App.eventHandlers['uemEditSaveModelName'] = function (app, userEnsembleModel, newModelName) {
+    // save the new name (assumed valid)
+    userEnsembleModel.name = newModelName;
+    console.info(`saved new user ensemble model name: '${newModelName}'`);
+};
+
+App.eventHandlers['selectModels'] = function (app, isChecked) {
+    if (isChecked) {
+        app.state.last_selected_models = app.state.selected_models;
+        app.state.selected_models = app.selectableModels();
+    } else {
+        app.state.selected_models = app.state.last_selected_models;
+    }
+    app.checkModels(app.state.selected_models);
+    app.updatePlot(true);
+};
+
+App.eventHandlers['decrementAsOf'] = function (app) {
+    app.decrementAsOf();
+};
+
+App.eventHandlers['incrementAsOf'] = function (app) {
+    app.incrementAsOf();
+};
+
+App.eventHandlers['modelChecked'] = function (app, model, isChecked) {
+    const isInSelectedModels = (app.state.selected_models.indexOf(model) > -1);
+    if (isChecked && !isInSelectedModels) {
+        app.state.selected_models.push(model);
+    } else if (!isChecked && isInSelectedModels) {
+        app.state.selected_models = app.state.selected_models.filter(function (value) {
+            return value !== model;
+        });  // app.state.selected_models.remove(model);
+    }
+    app.fetchDataUpdatePlot(false, null, true);
+};
+
+
+// export
 
 export default App;  // export the module's main entry point
