@@ -2,11 +2,11 @@
  * predtimechart: A JavaScript (ES6 ECMAScript) module for forecast visualization.
  */
 
-import {addEventHandlers, addModelCheckEventHandler} from "./events.js";
+import {addEventHandlers, addModelCheckEventHandler, initializeDateRangePicker} from "./events.js";
 import {getPlotlyData, getPlotlyLayout} from "./plot.js";
 import {createDomElements, initializeUEMModals} from "./ui.js";
 import _calcUemForecasts from './user-ensemble-model.js';
-import {_isInvalidUemName, closestYear, download} from "./utils.js";
+import {_isInvalidUemName, download} from "./utils.js";
 import _validateOptions from './validation.js';
 
 
@@ -253,38 +253,7 @@ const App = {
                 click: () => null,  // click (required here) is handled by daterangepicker below
             }]
         });
-        this.initializeDateRangePicker();  // b/c jquery binding is apparently lost with any Plotly.*() call
-    },
-
-    initializeDateRangePicker() {
-        // initialize https://www.daterangepicker.com/ . regarding the jquery selector for the above icon, the svg is:
-        // <a rel="tooltip" class="modebar-btn" data-title="Jump to As_Of" data-attr="my attr" data-val="my val" data-toggle="false" data-gravity="n">
-        const $icon = $("[data-title='Jump to As_Of']");  // NB: couldn't get this to work: $(".modebar-btn [data-title='Jump to As_Of']");
-        const available_as_ofs = App.state.available_as_ofs[App.uiState.selected_target_var];
-        $icon.daterangepicker({  // we use below 'apply.daterangepicker' instead of a callback to get more control, esp. to receive "today" clicks
-            singleDatePicker: true,
-            showDropdowns: true,
-            minYear: parseInt(available_as_ofs[0].slice(0, 4)),
-            maxYear: parseInt(available_as_ofs.at(-1).slice(0, 4)),
-        });
-        $icon.on('apply.daterangepicker', function (ev, picker) {
-            const pickedDate = picker.startDate.format('YYYY-MM-DD');
-            const availableAsOfs = App.state.available_as_ofs[App.uiState.selected_target_var];
-            const closestAsOf = closestYear(pickedDate, availableAsOfs);
-            console.debug(`apply.daterangepicker: pickedDate=${pickedDate}, closestAsOf=${closestAsOf}, selected_as_of_date=${App.uiState.selected_as_of_date}, diff=${closestAsOf !== App.uiState.selected_as_of_date}`);
-
-            // reset picked date to today (o/w stays on picked date)
-            picker.setStartDate(new Date());
-            picker.setEndDate(new Date());
-
-            // go to picked date if different from current
-            if (closestAsOf !== App.uiState.selected_as_of_date) {
-                App.uiState.selected_as_of_date = closestAsOf;
-                App.fetchDataUpdatePlot(true, false, true);
-                App.updateTruthAsOfCheckboxText();
-            }
-        });
-
+        initializeDateRangePicker(this);  // b/c jquery binding is apparently lost with any Plotly.*() call
     },
 
     initializeTargetVarsUI() {
@@ -362,6 +331,9 @@ const App = {
         _updateUemErrorIcon(USER_ENSEMBLE_MODEL);
     },
 
+    updateTruthAsOfCheckboxText() {
+        $("#asOfTruthDate").text(`As of ${this.uiState.selected_as_of_date}`);
+    },
 
     //
     // event handler functions
@@ -387,10 +359,6 @@ const App = {
             this.fetchDataUpdatePlot(true, false, true);
             this.updateTruthAsOfCheckboxText();
         }
-    },
-
-    updateTruthAsOfCheckboxText() {
-        $("#asOfTruthDate").text(`As of ${this.uiState.selected_as_of_date}`);
     },
 
     // Returns an array of models that are not grayed out.
@@ -581,10 +549,10 @@ const App = {
         // the plot, and then re-laying it out. NB: the default xaxis.range seems to be [-1, 6] when updating for the
         // first time (yaxis = [-1, 4]), so we check for the range being those arrays to determine whether to preserve
         // or not
-        var currXAxisRange = plotyDiv.layout.xaxis.range;
-        var currYAxisRange = plotyDiv.layout.yaxis.range;
-        var isXAxisRangeDefault = ((currXAxisRange.length === 2) && (currXAxisRange[0] === -1) && (currXAxisRange[1] === 6));
-        var isYAxisRangeDefault = ((currYAxisRange.length === 2) && (currYAxisRange[0] === -1) && (currYAxisRange[1] === 4));
+        const currXAxisRange = plotyDiv.layout.xaxis.range;
+        const currYAxisRange = plotyDiv.layout.yaxis.range;
+        const isXAxisRangeDefault = ((currXAxisRange.length === 2) && (currXAxisRange[0] === -1) && (currXAxisRange[1] === 6));
+        const isYAxisRangeDefault = ((currYAxisRange.length === 2) && (currYAxisRange[0] === -1) && (currYAxisRange[1] === 4));
         Plotly.react(plotyDiv, data, layout);
         if (!isXAxisRangeDefault) {
             Plotly.relayout(plotyDiv, 'xaxis.range', currXAxisRange);
@@ -597,7 +565,7 @@ const App = {
         if (isXAxisRangeDefault && (this.state.initial_xaxis_range != null)) {
             Plotly.relayout(plotyDiv, 'xaxis.range', this.state.initial_xaxis_range);
         }
-        this.initializeDateRangePicker();  // b/c jquery binding is apparently lost with any Plotly.*() call
+        initializeDateRangePicker(this);  // b/c jquery binding is apparently lost with any Plotly.*() call
     },
 };
 
