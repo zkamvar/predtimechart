@@ -162,6 +162,9 @@ const App = {
         this.state.current_date = options['current_date'];
         this.state.models = options['models'];
         this.state.disclaimer = options['disclaimer'];
+        this.state.initial_xaxis_range = options.hasOwnProperty('initial_xaxis_range') ? options['initial_xaxis_range'] : null;
+
+        // save initial UI state (reflected in UI by `initializeUI()`)
         this.uiState.colors = Array(parseInt(this.state.models.length / 10, 10) + 1).fill([
             '#0d0887',
             '#46039f',
@@ -174,9 +177,6 @@ const App = {
             '#fdca26',
             '#f0f921'
         ]).flat()
-        this.state.initial_xaxis_range = options.hasOwnProperty('initial_xaxis_range') ? options['initial_xaxis_range'] : null;
-
-        // save initial selected state
         this.uiState.selected_target_var = options['initial_target_var'];
         this.uiState.selected_interval = options['initial_interval'];
         this.uiState.selected_as_of_date = options['initial_as_of'];
@@ -339,32 +339,10 @@ const App = {
     // event handler functions
     //
 
-    incrementAsOf() {
-        const thisState = this.state;
-        const thisUIState = this.uiState;
-        const as_of_index = thisState.available_as_ofs[thisUIState.selected_target_var].indexOf(thisUIState.selected_as_of_date);
-        if (as_of_index < thisState.available_as_ofs[thisUIState.selected_target_var].length - 1) {
-            thisUIState.selected_as_of_date = thisState.available_as_ofs[thisUIState.selected_target_var][as_of_index + 1];
-            this.fetchDataUpdatePlot(true, false, true);
-            this.updateTruthAsOfCheckboxText();
-        }
-    },
-
-    decrementAsOf() {
-        const thisState = this.state;
-        const thisUIState = this.uiState;
-        const as_of_index = thisState.available_as_ofs[thisUIState.selected_target_var].indexOf(thisUIState.selected_as_of_date);
-        if (as_of_index > 0) {
-            thisUIState.selected_as_of_date = thisState.available_as_ofs[thisUIState.selected_target_var][as_of_index - 1];
-            this.fetchDataUpdatePlot(true, false, true);
-            this.updateTruthAsOfCheckboxText();
-        }
-    },
-
     // Returns an array of models that are not grayed out.
     selectableModels() {
         return this.state.models.filter(function (element, index) {
-            return index < 100;
+            return index < 100;  // todo xx bug? see how `updateModelsList()` splits them apart - it's NOT at 100!
         });
     },
 
@@ -510,7 +488,7 @@ const App = {
             this.state.models.unshift(USER_ENSEMBLE_MODEL.name);  // add to front so sorts at top of models list
         }
         if (!this.uiState.selected_models.includes(USER_ENSEMBLE_MODEL.name)) {
-            this.uiState.selected_models.push(USER_ENSEMBLE_MODEL.name);
+            this.uiState.selected_models.push(USER_ENSEMBLE_MODEL.name);  // write
         }
         USER_ENSEMBLE_MODEL.models.length = 0;  // quick way to clear an array
         USER_ENSEMBLE_MODEL.models.push(...componentModels);
@@ -523,7 +501,7 @@ const App = {
     removeUserEnsembleModel() {
         delete this.state.forecasts[USER_ENSEMBLE_MODEL.name];
         this.state.models = this.state.models.filter(item => item !== USER_ENSEMBLE_MODEL.name)
-        this.uiState.selected_models = this.uiState.selected_models.filter(item => item !== USER_ENSEMBLE_MODEL.name)
+        this.uiState.selected_models = this.uiState.selected_models.filter(item => item !== USER_ENSEMBLE_MODEL.name)  // write
         USER_ENSEMBLE_MODEL.models.length = 0;  // quick way to clear an array
         USER_ENSEMBLE_MODEL.lastError = null;
     },
@@ -575,7 +553,7 @@ const App = {
 //
 
 App.eventHandlers['targetVariableSelected'] = function (app, selectedTargetVar) {
-    app.uiState.selected_target_var = selectedTargetVar;
+    app.uiState.selected_target_var = selectedTargetVar;  // write
     app.fetchDataUpdatePlot(true, true, false);
 };
 
@@ -584,17 +562,18 @@ App.eventHandlers['taskIdSelected'] = function (app, selectedTaskId) {
 };
 
 App.eventHandlers['intervalSelected'] = function (app, selectedInterval) {
-    app.uiState.selected_interval = selectedInterval;
+    app.uiState.selected_interval = selectedInterval;  // write
     app.fetchDataUpdatePlot(false, null, true);
 };
 
 App.eventHandlers['truthsSelected'] = function (app, selectedTruths) {
-    app.uiState.selected_truth = selectedTruths;
+    app.uiState.selected_truth = selectedTruths;  // write
     app.fetchDataUpdatePlot(false, null, true);
 };
 
 App.eventHandlers['shuffleColors'] = function (app) {
-    app.uiState.colors = app.uiState.colors.sort(() => 0.5 - Math.random())
+    const appUIState = app.uiState;
+    appUIState.colors = appUIState.colors.sort(() => 0.5 - Math.random())  // write
     app.updateModelsList();
     app.updatePlot(true);
 };
@@ -626,9 +605,10 @@ App.eventHandlers['removeUserEnsemble'] = function (app) {
 };
 
 App.eventHandlers['downloadUserEnsemble'] = function (app, userEnsembleModel) {
-    console.debug("#downloadUserEnsemble click", userEnsembleModel.models, app.uiState.selected_target_var, app.uiState.selected_as_of_date);
+    const appUIState = app.uiState;
+    console.debug("#downloadUserEnsemble click", userEnsembleModel.models, appUIState.selected_target_var, appUIState.selected_as_of_date);
     let fileName = '';
-    app._calcUemForecasts(userEnsembleModel.models, app.uiState.selected_target_var, app.uiState.selected_as_of_date, userEnsembleModel.name)  // Promise
+    app._calcUemForecasts(userEnsembleModel.models, appUIState.selected_target_var, appUIState.selected_as_of_date, userEnsembleModel.name)  // Promise
         .then(response => {
             if (!response.ok) {
                 console.error('#downloadUserEnsemble click: bad response', response);
@@ -716,33 +696,49 @@ App.eventHandlers['uemEditSaveModelName'] = function (app, userEnsembleModel, ne
     console.info(`saved new user ensemble model name: '${newModelName}'`);
 };
 
-App.eventHandlers['selectModels'] = function (app, isChecked) {
+App.eventHandlers['toggleModels'] = function (app, isChecked) {
+    const appUIState = app.uiState;
     if (isChecked) {
-        app.uiState.last_selected_models = app.uiState.selected_models;
-        app.uiState.selected_models = app.selectableModels();
+        appUIState.last_selected_models = appUIState.selected_models;  // write
+        appUIState.selected_models = app.selectableModels();            // write
     } else {
-        app.uiState.selected_models = app.uiState.last_selected_models;
+        appUIState.selected_models = appUIState.last_selected_models;  // write
     }
-    app.checkModels(app.uiState.selected_models);
+    app.checkModels(appUIState.selected_models);
     app.updatePlot(true);
 };
 
 App.eventHandlers['decrementAsOf'] = function (app) {
-    app.decrementAsOf();
+    const appState = app.state;
+    const appUIState = app.uiState;
+    const as_of_index = appState.available_as_ofs[appUIState.selected_target_var].indexOf(appUIState.selected_as_of_date);
+    if (as_of_index > 0) {
+        appUIState.selected_as_of_date = appState.available_as_ofs[appUIState.selected_target_var][as_of_index - 1];  // write
+        app.fetchDataUpdatePlot(true, false, true);
+        app.updateTruthAsOfCheckboxText();
+    }
 };
 
 App.eventHandlers['incrementAsOf'] = function (app) {
-    app.incrementAsOf();
+    const appState = app.state;
+    const appUIState = app.uiState;
+    const as_of_index = appState.available_as_ofs[appUIState.selected_target_var].indexOf(appUIState.selected_as_of_date);
+    if (as_of_index < appState.available_as_ofs[appUIState.selected_target_var].length - 1) {
+        appUIState.selected_as_of_date = appState.available_as_ofs[appUIState.selected_target_var][as_of_index + 1];  // write
+        app.fetchDataUpdatePlot(true, false, true);
+        app.updateTruthAsOfCheckboxText();
+    }
 };
 
 App.eventHandlers['modelChecked'] = function (app, model, isChecked) {
-    const isInSelectedModels = (app.uiState.selected_models.indexOf(model) > -1);
+    const appUIState = app.uiState;
+    const isInSelectedModels = (appUIState.selected_models.indexOf(model) > -1);
     if (isChecked && !isInSelectedModels) {
-        app.uiState.selected_models.push(model);
+        appUIState.selected_models.push(model);  // write
     } else if (!isChecked && isInSelectedModels) {
-        app.uiState.selected_models = app.uiState.selected_models.filter(function (value) {
+        appUIState.selected_models = appUIState.selected_models.filter(function (value) {  // write
             return value !== model;
-        });  // app.uiState.selected_models.remove(model);
+        });  // appUIState.selected_models.remove(model);
     }
     app.fetchDataUpdatePlot(false, null, true);
 };

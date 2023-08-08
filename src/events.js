@@ -71,7 +71,7 @@ function addEventHandlers(app, userEnsembleModel) {
     $("#forecastViz_all").change(function () {
         const $this = $(this);
         const isChecked = $this.prop('checked');
-        app.eventHandlers['selectModels'](app, isChecked);
+        app.eventHandlers['toggleModels'](app, isChecked);
     });
 
     // wire up model checkboxes
