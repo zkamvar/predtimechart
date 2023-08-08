@@ -1,3 +1,7 @@
+//
+// Various utilities for the app.
+//
+
 /**
  *
  * @param year {String} date in 'YYYY-MM-DD' format
@@ -40,6 +44,53 @@ function _parseYYYYMMDDStr(year) {
 }
 
 
+/**
+ * Validates modelName
+ *
+ * @param models array of current models
+ * @param modelName candidate name for USER_ENSEMBLE_MODEL.name
+ * @returns error message if invalid; false if valid: <= 31 chars . letter, number, underscore, or hyphen/dash
+ * @private
+ */
+function _isInvalidUemName(models, modelName) {
+    if (modelName.length === 0) {
+        return "name is required";
+    } else if (modelName.length > 31) {
+        return "name is more than 31 characters";
+    } else if (models.includes(modelName)) {
+        return "name already used";
+    } else if (!(/^[a-zA-Z0-9_-]+$/.test(modelName))) {
+        return "name had invalid characters. must be letters, numbers, underscores, or hypens'";
+    } else {
+        return false;  // valid
+    }
+}
+
+
+//
+// saveFile() helper for $("#downloadUserEnsemble").click()
+// - per https://stackoverflow.com/questions/3665115/how-to-create-a-file-in-memory-for-user-to-download-but-not-through-server
+//
+
+function download(content, mimeType, filename) {
+    if (window.navigator.msSaveOrOpenBlob) {
+        window.navigator.msSaveOrOpenBlob(blob, filename);
+    } else {
+        const a = document.createElement('a')
+        document.body.appendChild(a);
+        const blob = new Blob([content], {type: mimeType}) // Create a blob (file-like object)
+        const url = URL.createObjectURL(blob)
+        a.setAttribute('href', url)
+        a.setAttribute('download', filename)
+        a.click()  // Start downloading
+        setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }, 0)
+    }
+}
+
+
 // export
 
-export {closestYear}
+export {closestYear, _isInvalidUemName, download}

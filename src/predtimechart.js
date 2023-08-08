@@ -2,8 +2,11 @@
  * predtimechart: A JavaScript (ES6 ECMAScript) module for forecast visualization.
  */
 
-import {closestYear} from "./utils.js";
+import {addEventHandlers, addModelCheckEventHandler} from "./events.js";
+import {getPlotlyData, getPlotlyLayout} from "./plot.js";
+import {createDomElements, initializeUEMModals} from "./ui.js";
 import _calcUemForecasts from './user-ensemble-model.js';
+import {closestYear} from "./utils.js";
 import _validateOptions from './validation.js';
 
 
@@ -19,35 +22,13 @@ const USER_ENSEMBLE_MODEL = {  // contains all information about the model
 
 
 /**
- * Validates modelName
- *
- * @param modelName candidate name for USER_ENSEMBLE_MODEL.name
- * @returns error message if invalid; false if valid: <= 31 chars . letter, number, underscore, or hyphen/dash
- * @private
- */
-function _isInvalidUemName(modelName) {
-    if (modelName.length === 0) {
-        return "name is required";
-    } else if (modelName.length > 31) {
-        return "name is more than 31 characters";
-    } else if (App.state.models.includes(modelName)) {
-        return "name already used";
-    } else if (!(/^[a-zA-Z0-9_-]+$/.test(modelName))) {
-        return "name had invalid characters. must be letters, numbers, underscores, or hypens'";
-    } else {
-        return false;  // valid
-    }
-}
-
-
-/**
  * Updates the user ensemble model's error icon in the models list based on USER_ENSEMBLE_MODEL.lastError .
  *
  * @private
  */
-function _updateUemErrorIcon() {
-    const error = USER_ENSEMBLE_MODEL.lastError;
-    const $modelCheckboxParent = $(`#${USER_ENSEMBLE_MODEL.name}`).parent();  // the <label> - see _selectModelDiv()
+function _updateUemErrorIcon(userEnsembleModel) {
+    const error = userEnsembleModel.lastError;
+    const $modelCheckboxParent = $(`#${userEnsembleModel.name}`).parent();  // the <label> - see _selectModelDiv()
     if (error === null) {
         $modelCheckboxParent.children('img').remove();
     } else {
@@ -76,159 +57,6 @@ function _selectModelDiv(model, modelColor, isEnabled, isChecked) {
                     &nbsp;<span class="forecastViz_dot" style="background-color: ${modelColor}; "></span>
                 </label>
             </div>`;
-}
-
-
-// event handler helper
-function _setSelectedTruths() {
-    const isCurrTruthChecked = $("#forecastViz_Current_Truth").prop('checked');
-    const isAsOfTruthChecked = $("#forecastViz_Truth_as_of").prop('checked');  // ""
-    const selectedTruths = [];
-    if (isCurrTruthChecked) {
-        selectedTruths.push('Current Truth');
-    }
-    if (isAsOfTruthChecked) {
-        selectedTruths.push('Truth as of');
-    }
-    this.state.selected_truth = selectedTruths;
-    this.fetchDataUpdatePlot(false, null, true);
-}
-
-
-/**
- * `initialize()` helper that builds UI by adding DOM elements to $componentDiv. the UI is one row with two columns:
- * options on left and the plotly plot on the right
- *
- * @param $componentDiv - an empty Bootstrap 4 row (JQuery object)
- * @param isUemEnabled - true if the Action menu should be added
- * @param taskIdsKeys - array of options.task_ids keys. used to create task rows - one per task ID
- * @private
- */
-function _createUIElements($componentDiv, isUemEnabled, taskIdsKeys) {
-    //
-    // helper functions for creating for rows
-    //
-
-    function titleCase(str) {  // per https://stackoverflow.com/questions/196972/convert-string-to-title-case-with-javascript
-        return str.toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
-    }
-
-    function _createFormRow(selectId, label) {
-        return $(
-            `<div class="form-row">\n` +
-            `    <label for="${selectId}" class="col-sm-4 col-form-label">${label}:</label>\n` +
-            `    <div class="col-sm-8">\n` +
-            `        <select id="${selectId}" class="form-control"></select>\n` +
-            `    </div>\n` +
-            `</div>`)
-    }
-
-
-    //
-    // make $optionsDiv (left column)
-    //
-    const $optionsDiv = $('<div class="col-md-3" id="forecastViz_options"></div>');
-
-    // add Outcome, task ID, and Interval selects (form). NB: these are unfilled; their <OPTION>s are added by
-    // initializeTargetVarsUI(), initializeTaskIDsUI(), and initializeIntervalsUI(), respectively
-    const $optionsForm = $('<form></form>');
-    $optionsForm.append(_createFormRow('target_variable', 'Outcome'));
-    taskIdsKeys.forEach(taskIdKey => {
-        $optionsForm.append(_createFormRow(taskIdKey, titleCase(taskIdKey.replace(/[_-]/g, ' '))));  // replace w/spaces
-    });
-    $optionsForm.append(_createFormRow('intervals', 'Interval'));
-    $optionsDiv.append($optionsForm);
-
-    // add truth checkboxes
-    const $truthCheckboxesDiv = $(
-        '<div class="form-group form-check forecastViz_select_data ">\n' +
-        '    <input title="curr truth" type="checkbox" id="forecastViz_Current_Truth" value="Current Truth" checked>\n' +
-        '      &nbsp;<span id="currentTruthDate">Current (current truth date here)</span>\n' +
-        '      &nbsp;<span class="forecastViz_dot" style="background-color: lightgrey; "></span>\n' +
-        '    <br>\n' +
-        '    <input title="truth as of" type="checkbox" id="forecastViz_Truth_as_of" value="Truth as of" checked>\n' +
-        '      &nbsp;<span id="asOfTruthDate">(as of truth date here)</span>\n' +
-        '      &nbsp;<span class="forecastViz_dot" style="background-color: black;"></span>\n' +
-        '</div>');
-    $optionsDiv.append('<div class="pt-md-3">Select Truth Data:</div>');
-    $optionsDiv.append($truthCheckboxesDiv);
-
-    // add model list controls
-    var optionsDivActionsDropdown;
-    if (isUemEnabled) {
-        optionsDivActionsDropdown = '<div class="dropdown">\n' +
-            '  <button class="btn btn-sm dropdown-toggle" type="button" id="dropdownMenuButton" style="float: right;" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">\n' +
-            '    Actions\n' +
-            '  </button>\n' +
-            '  <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">\n' +
-            '    <a class="dropdown-item" id="addUserEnsemble" href="#">Add User Ensemble</a>\n' +
-            '    <a class="dropdown-item disabled" id="removeUserEnsemble" href="#">Remove User Ensemble</a>\n' +
-            '    <a class="dropdown-item disabled" id="downloadUserEnsemble" href="#">Download User Ensemble CSV</a>\n' +
-            '    <a class="dropdown-item disabled" id="infoUserEnsemble" href="#">User Ensemble Info...</a>\n' +
-            '    <a class="dropdown-item" id="editNameUserEnsemble" href="#">Edit User Ensemble Model Name...</a>\n' +
-            '    <a class="dropdown-item" id="helpUserEnsemble" target="_blank" href="https://github.com/reichlab/predtimechart#human-judgement-ensemble-model">Help...</a>\n' +
-            '  </div>\n' +
-            '</div>\n';
-    } else {
-        optionsDivActionsDropdown = '';
-    }
-    $optionsDiv.append($(
-        optionsDivActionsDropdown +
-        '<button type="button" class="btn btn-sm rounded-pill" id="forecastViz_shuffle" style="float: right;">\n' +
-        '    Shuffle Colours</button>\n' +
-        '<label class="forecastViz_label" for="forecastViz_all">Select Models:</label>\n' +
-        '<input type="checkbox" id="forecastViz_all">'));
-
-    // add the model list itself
-    $optionsDiv.append($('<div id="forecastViz_select_model"></div>'));
-
-
-    //
-    // make $vizDiv (right column)
-    //
-    const $vizDiv = $('<div class="col-md-9" id="forecastViz_viz"></div>');
-    const $buttonsDiv = $(
-        '<div class="container">\n' +
-        '    <div class="col-md-12 text-center">\n' +
-        '        <button type="button" class="btn btn-primary" id="decrement_as_of">&lt;</button>\n' +
-        '        <button type="button" class="btn btn-primary" id="increment_as_of">&gt;</button>\n' +
-        '    </div>\n' +
-        '</div>'
-    );
-    $vizDiv.append($('<p class="forecastViz_disclaimer"><b><span id="disclaimer">(disclaimer here)</span></b></p>'));
-    $vizDiv.append($('<div id="ploty_div" style="width: 100%; height: 72vh; position: relative;"></div>'));
-    $vizDiv.append($buttonsDiv);
-    $vizDiv.append($('<p style="text-align:center"><small>Note: You can navigate to forecasts from previous weeks with the left and right arrow keys</small></p>'));
-
-
-    //
-    // finish
-    //
-    $componentDiv.empty().append($optionsDiv, $vizDiv);
-}
-
-
-//
-// saveFile() helper for $("#downloadUserEnsemble").click()
-// - per https://stackoverflow.com/questions/3665115/how-to-create-a-file-in-memory-for-user-to-download-but-not-through-server
-//
-
-function download(content, mimeType, filename) {
-    if (window.navigator.msSaveOrOpenBlob) {
-        window.navigator.msSaveOrOpenBlob(blob, filename);
-    } else {
-        const a = document.createElement('a')
-        document.body.appendChild(a);
-        const blob = new Blob([content], {type: mimeType}) // Create a blob (file-like object)
-        const url = URL.createObjectURL(blob)
-        a.setAttribute('href', url)
-        a.setAttribute('download', filename)
-        a.click()  // Start downloading
-        setTimeout(() => {
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        }, 0)
-    }
 }
 
 
@@ -345,7 +173,7 @@ const App = {
         this.state.selected_models = options['initial_checked_models'];
 
         // populate UI elements, setting selection state to initial
-        this.initializeBootstrapComponents(); // done here instead of initializeUI() so below `modal('show')` will work
+        initializeUEMModals();  // done here instead of initializeUI() so below `modal('show')` will work
 
         // disable human judgement ensemble model feature if requested or if default model name conflict
         if (typeof (_calcUemForecasts) != 'function') {
@@ -370,12 +198,11 @@ const App = {
         }
 
         console.log('initialize(): initializing UI');
-        const $componentDiv = $(componentDivEle);
-        _createUIElements($componentDiv, this.isUemEnabled, Object.keys(this.state.task_ids));
+        createDomElements(componentDiv, this.isUemEnabled, Object.keys(this.state.task_ids));
         this.initializeUI(options);
 
         // wire up UI controls (event handlers)
-        this.addEventHandlers();
+        addEventHandlers(this, USER_ENSEMBLE_MODEL);
 
         // pull initial data (current truth, selected truth, and selected forecast) and update the plot
         console.log('initialize(): fetching data and updating plot');
@@ -383,6 +210,7 @@ const App = {
 
         console.log('initialize(): done');
     },
+
     initializeUI(options) {
         // populate options and models list (left column)
         this.initializeTargetVarsUI();
@@ -400,7 +228,7 @@ const App = {
         // initialize plotly (right column)
         const plotyDiv = document.getElementById('ploty_div');
         const data = []  // data will be update by `updatePlot()`
-        const layout = this.getPlotlyLayout();
+        const layout = getPlotlyLayout(this);
         const calendarIcon = {  // https://fontawesome.com/icons/calendar-days?f=classic&s=solid
             'width': 448,
             'height': 512,
@@ -416,6 +244,7 @@ const App = {
         });
         this.initializeDateRangePicker();  // b/c jquery binding is apparently lost with any Plotly.*() call
     },
+
     initializeDateRangePicker() {
         // initialize https://www.daterangepicker.com/ . regarding the jquery selector for the above icon, the svg is:
         // <a rel="tooltip" class="modebar-btn" data-title="Jump to As_Of" data-attr="my attr" data-val="my val" data-toggle="false" data-gravity="n">
@@ -446,54 +275,7 @@ const App = {
         });
 
     },
-    initializeBootstrapComponents() {
-        const $uemInfoModalDiv = $(
-            '<div class="modal fade" id="uemInfoModal" tabIndex="-1" aria-labelledby="uemInfoModalTitle"\n' +
-            '     aria-hidden="true">\n' +
-            '    <div class="modal-dialog">\n' +
-            '        <div class="modal-content">\n' +
-            '            <div class="modal-header">\n' +
-            '                <h5 class="modal-title" id="uemInfoModalTitle">(title here)</h5>\n' +
-            '                <a class="close" data-dismiss="modal">&times;</a>\n' +
-            '            </div>\n' +
-            '            <div class="modal-body" id="uemInfoModalBody">(body here)</div>\n' +
-            '            <div class="modal-footer">\n' +
-            '                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>\n' +
-            '            </div>\n' +
-            '        </div>\n' +
-            '    </div>\n' +
-            '</div>'
-        );
-        $(document.body).append($uemInfoModalDiv);
 
-        // form onsubmit trick per https://stackoverflow.com/questions/15239236/bootstrap-modal-dialogs-with-a-single-text-input-field-always-dismiss-on-enter-k
-        const $uemEditModelNameModalDiv = $(
-            '<div class="modal fade" id="uemEditModelNameModal" tabIndex="-1" aria-labelledby="uemInfoModalTitle"\n' +
-            '     aria-hidden="true">\n' +
-            '    <div class="modal-dialog">\n' +
-            '        <div class="modal-content">\n' +
-            '            <div class="modal-header">\n' +
-            '                <h5 class="modal-title" id="uemInfoModalTitle">User Ensemble Model Name</h5>\n' +
-            '                <a class="close" data-dismiss="modal">&times;</a>\n' +
-            '            </div>\n' +
-            '            <div class="modal-body">\n' +
-            '               <form novalidate onsubmit="return false">\n' +
-            '                   <div class="form-group">\n' +
-            '                       <label for="model-name" class="col-form-label">Model name:</label>\n' +
-            '                       <input type="text" class="form-control is-valid" id="uemEditModelName" value="(name here)">\n' +
-            '                       <div class="invalid-feedback hidden">(invalid here)</div>\n' +
-            '                   </div>\n' +
-            '               </form>\n' +
-            '            </div>\n' +
-            '            <div class="modal-footer">\n' +
-            '                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>\n' +
-            '                <button type="button" class="btn btn-primary" data-dismiss="modal" id="uemEditSaveButton">Save</button>\n' +
-            '           </div>\n' +
-            '    </div>\n' +
-            '</div>'
-        );
-        $(document.body).append($uemEditModelNameModalDiv);
-    },
     initializeTargetVarsUI() {
         // populate the target variable <SELECT>
         const $targetVarsSelect = $("#target_variable");
@@ -505,6 +287,7 @@ const App = {
             $targetVarsSelect.append(optionNode);
         });
     },
+
     initializeTaskIDsUI(initialTaskIds) {
         // populate task ID-related <SELECT>s
         const thisState = this.state;
@@ -519,6 +302,7 @@ const App = {
             });
         });
     },
+
     initializeIntervalsUI() {
         // populate the interval <SELECT>
         const $intervalsSelect = $("#intervals");
@@ -530,6 +314,7 @@ const App = {
             $intervalsSelect.append(optionNode);
         });
     },
+
     updateModelsList() {
         // populate the select model div
         const $selectModelDiv = $("#forecastViz_select_model");
@@ -559,213 +344,10 @@ const App = {
             });
 
         // re-wire up model checkboxes
-        this.addModelCheckEventHandler();
+        addModelCheckEventHandler(this);
 
         // update the user ensemble model's error icon
-        _updateUemErrorIcon();
-    },
-    addEventHandlers() {
-        // option, task ID, and interval selects
-        $('#target_variable').on('change', function () {
-            App.state.selected_target_var = this.value;
-            App.fetchDataUpdatePlot(true, true, false);
-        });
-        Object.keys(this.state.task_ids).forEach(function (taskIdKey) {
-            const $taskIdSelect = $(`#${taskIdKey}`);  // created by _createUIElements()
-            $taskIdSelect.on('change', function () {
-                App.fetchDataUpdatePlot(true, true, false);
-            });
-        });
-        $('#intervals').on('change', function () {
-            App.state.selected_interval = this.value;
-            App.fetchDataUpdatePlot(false, null, true);
-        });
-
-        // truth checkboxes
-        $("#forecastViz_Current_Truth").change(function () {
-            _setSelectedTruths();
-        });
-        $("#forecastViz_Truth_as_of").change(function () {
-            _setSelectedTruths();
-        });
-
-        // Shuffle Colours button
-        $("#forecastViz_shuffle").click(function () {
-            App.state.colors = App.state.colors.sort(() => 0.5 - Math.random())
-            App.updateModelsList();
-            App.updatePlot(true);
-        });
-
-        // User Ensemble Model Actions dropdown button. NB: these will not be created by initialize() if !isUemEnabled,
-        // but JQuery will not error if they don't exist :-)
-        $("#addUserEnsemble").click(function (event) {
-            console.debug("addUserEnsemble click", App.state.selected_models);
-            event.preventDefault();
-            App.removeUserEnsembleModel();
-            App.addUserEnsembleModel();
-            App.updateModelsList();
-            App.updatePlot(true);
-            $("#removeUserEnsemble").removeClass('disabled');    // enable
-            $("#downloadUserEnsemble").removeClass('disabled');  // ""
-            $("#infoUserEnsemble").removeClass('disabled');      // ""
-            $("#editNameUserEnsemble").addClass('disabled');     // disable
-        });
-        $("#removeUserEnsemble").click(function (event) {
-            event.preventDefault();
-            App.removeUserEnsembleModel();
-            App.updateModelsList();
-            App.updatePlot(true);
-            $("#removeUserEnsemble").addClass('disabled');       // disable
-            $("#downloadUserEnsemble").addClass('disabled');     // ""
-            $("#infoUserEnsemble").addClass('disabled');         // ""
-            $("#editNameUserEnsemble").removeClass('disabled');  // enable
-        });
-        $("#downloadUserEnsemble").click(function (event) {
-            console.debug("#downloadUserEnsemble click", USER_ENSEMBLE_MODEL.models, App.state.selected_target_var, App.state.selected_as_of_date);
-            event.preventDefault();
-            let fileName = '';
-            App._calcUemForecasts(USER_ENSEMBLE_MODEL.models, App.state.selected_target_var, App.state.selected_as_of_date, USER_ENSEMBLE_MODEL.name)  // Promise
-                .then(response => {
-                    if (!response.ok) {
-                        console.error('#downloadUserEnsemble click: bad response', response);
-                        return response.text().then(text => {
-                            throw new Error(text);
-                        })
-                    }
-
-                    // contentDisposition is like: "attachment; filename=\"2022-01-29-User-Ensemble.csv\""
-                    const contentDisposition = Object.fromEntries(response.headers)['content-disposition'];
-                    fileName = contentDisposition.split('"')[1];
-                    return response.text();
-                })
-                .then((text) => {
-                    console.debug("#downloadUserEnsemble click: data", typeof (text), fileName);
-                    download(text, 'text/csv', fileName);
-                    console.debug("#downloadUserEnsemble click: download() done");
-
-                    // configure and show the info modal
-                    $('#uemInfoModalTitle').html('CSV File Downloaded');
-                    $('#uemInfoModalBody').html(`User ensemble downloaded to "${fileName}".`);
-                    $('#uemInfoModal').modal('show');
-                })
-                .catch(error => {  // NB: fetch() does not generate an error for 4__ responses
-                    console.error(`#downloadUserEnsemble click: error: ${error.message}`)
-
-                    // configure and show the info modal
-                    $('#uemInfoModalTitle').html('Error Downloading CVS File');
-                    $('#uemInfoModalBody').html(`"${error.message}"`);
-                    $('#uemInfoModal').modal('show');
-                });
-        });
-        $("#infoUserEnsemble").click(function (event) {
-            event.preventDefault();
-
-            // configure and show the info modal
-            const modelName = USER_ENSEMBLE_MODEL.name;
-            const componentModels = USER_ENSEMBLE_MODEL.models.join(", ");
-            const lastError = (USER_ENSEMBLE_MODEL.lastError === null) ? '(no errors)' : USER_ENSEMBLE_MODEL.lastError;
-            const $userInfoForm = $(
-                '<form>\n' +
-                '  <div class="form-group">\n' +
-                '    <label for="model-name" class="col-form-label">Model name:</label>\n' +
-                `    <input type="text" class="form-control" id="model-name" readonly value="${modelName}">\n` +
-                '  </div>\n' +
-                '  <div class="form-group">\n' +
-                '    <label for="model-list" class="col-form-label">Component models:</label>\n' +
-                `    <input type="text" class="form-control" id="model-list" readonly value="${componentModels}">\n` +
-                '  </div>\n' +
-                '  <div class="form-group">\n' +
-                '    <label for="last-error" class="col-form-label">Last error:</label>\n' +
-                `    <textarea class="form-control" id="last-error" readonly>${lastError}</textarea>\n` +
-                '  </div>\n' +
-                '</form>'
-            );
-            $('#uemInfoModalTitle').html('User Ensemble Settings');
-            $('#uemInfoModalBody').html($userInfoForm);
-            $('#uemInfoModal').modal('show');
-        });
-
-        // handle #uemEditModelNameModal activity:
-        $('#uemEditModelName').on('input', function () {
-            // validate model name edit on each keystroke, displaying the result:
-            const modelName = $('#uemEditModelName').val();
-            const isInvalid = _isInvalidUemName(modelName);  // error message if invalid; false if valid
-            const $invalidFeedbackDiv = $('#uemEditModelNameModal .invalid-feedback');
-            const $modelNameInput = $('#uemEditModelNameModal input');
-            if (isInvalid) {
-                $invalidFeedbackDiv.html(isInvalid);
-                $invalidFeedbackDiv.show();
-                $modelNameInput.addClass('is-invalid')
-            } else {
-                $invalidFeedbackDiv.html('');
-                $invalidFeedbackDiv.hide();
-                $modelNameInput.removeClass('is-invalid')
-            }
-        });
-        $("#uemEditSaveButton").click(function () {
-            // save the new name (assumed valid)
-            const newModelName = $("#uemEditModelName").val();
-            USER_ENSEMBLE_MODEL.name = newModelName;
-            console.info(`saved new user ensemble model name: '${newModelName}'`);
-        });
-        $("#editNameUserEnsemble").click(function (event) {
-            event.preventDefault();
-
-            // configure and show the user model name edit modal
-            const modelName = USER_ENSEMBLE_MODEL.name;
-            $("#uemEditModelName").val(modelName);  // initialize name to current
-            $('#uemEditModelNameModal').modal('show');
-        });
-
-        // "Select Models" checkbox
-        $("#forecastViz_all").change(function () {
-            const $this = $(this);
-            const isChecked = $this.prop('checked');
-            if (isChecked) {
-                App.state.last_selected_models = App.state.selected_models;
-                App.state.selected_models = App.selectableModels();
-            } else {
-                App.state.selected_models = App.state.last_selected_models;
-            }
-            App.checkModels(App.state.selected_models);
-            App.updatePlot(true);
-        });
-
-        // wire up model checkboxes
-        this.addModelCheckEventHandler();
-
-        // left and right buttons
-        $("#decrement_as_of").click(function () {
-            App.decrementAsOf();
-        });
-        $("#increment_as_of").click(function () {
-            App.incrementAsOf();
-        });
-
-        // left and right keys
-        window.addEventListener('keydown', function (event) {
-            if (event.code === "ArrowLeft") {
-                App.decrementAsOf();
-            } else if (event.code === "ArrowRight") {
-                App.incrementAsOf();
-            }
-        });
-    },
-    addModelCheckEventHandler() {
-        $(".model-check").change(function () {
-            const $this = $(this);
-            const model = $this.prop('id');
-            const isChecked = $this.prop('checked');
-            const isInSelectedModels = (App.state.selected_models.indexOf(model) > -1);
-            if (isChecked && !isInSelectedModels) {
-                App.state.selected_models.push(model);
-            } else if (!isChecked && isInSelectedModels) {
-                App.state.selected_models = App.state.selected_models.filter(function (value) {
-                    return value !== model;
-                });  // App.state.selected_models.remove(model);
-            }
-            App.fetchDataUpdatePlot(false, null, true);
-        });
+        _updateUemErrorIcon(USER_ENSEMBLE_MODEL);
     },
 
 
@@ -782,6 +364,7 @@ const App = {
             this.updateTruthAsOfCheckboxText();
         }
     },
+
     decrementAsOf() {
         const state = this.state;
         const as_of_index = state.available_as_ofs[state.selected_target_var].indexOf(state.selected_as_of_date);
@@ -791,6 +374,7 @@ const App = {
             this.updateTruthAsOfCheckboxText();
         }
     },
+
     updateTruthAsOfCheckboxText() {
         $("#asOfTruthDate").text(`As of ${this.state.selected_as_of_date}`);
     },
@@ -871,6 +455,7 @@ const App = {
             this.updatePlot(isPreserveYLimit);
         }
     },
+
     fetchCurrentTruth() {
         this.state.current_truth = [];  // clear in case of error
         return this._fetchData(false,  // Promise
@@ -881,6 +466,7 @@ const App = {
             })
             .catch(error => console.log(`fetchCurrentTruth(): error: ${error.message}`));
     },
+
     fetchAsOfTruth() {
         this.state.as_of_truth = [];  // clear in case of error
         return this._fetchData(false,  // Promise
@@ -891,6 +477,7 @@ const App = {
             })
             .catch(error => console.log(`fetchAsOfTruth(): error: ${error.message}`));
     },
+
     fetchForecasts() {
         this.state.forecasts = {};  // clear in case of error
         return this._fetchData(true,  // Promise
@@ -970,8 +557,8 @@ const App = {
      */
     updatePlot(isPreserveYLimit) {
         const plotyDiv = document.getElementById('ploty_div');
-        const data = this.getPlotlyData();
-        let layout = this.getPlotlyLayout();
+        const data = getPlotlyData(this);
+        let layout = getPlotlyLayout(this);
         if (data.length === 0) {
             layout = {title: {text: 'No Visualization Data Found'}};
         }
@@ -997,194 +584,6 @@ const App = {
             Plotly.relayout(plotyDiv, 'xaxis.range', this.state.initial_xaxis_range);
         }
         this.initializeDateRangePicker();  // b/c jquery binding is apparently lost with any Plotly.*() call
-    },
-    getPlotlyLayout() {
-        if (this.state.target_variables.length === 0) {
-            return {};
-        }
-
-        const variable = this.state.target_variables.filter((obj) => obj.value === this.state.selected_target_var)[0].plot_text;
-        const taskIdVals = Object.values(this.selectedTaskIDs());  // e.g., {"scenario_id": 1, "location": "48"} -> [1, "48]
-        return {
-            autosize: true,
-            showlegend: false,
-            title: {
-                text: `Forecasts of ${variable} <br> in ${taskIdVals} as of ${this.state.selected_as_of_date}`,
-                x: 0.5,
-                y: 0.90,
-                xanchor: 'center',
-                yanchor: 'top',
-            },
-            xaxis: {
-                title: {text: 'Date'},
-                rangeslider: {},
-            },
-            yaxis: {
-                title: {text: variable, hoverformat: '.2f'},
-                fixedrange: false
-            }
-        }
-    },
-    getPlotlyData() {
-        const state = this.state;
-        let pd = [];
-        if (state.selected_truth.includes('Current Truth') && Object.keys(state.current_truth).length !== 0) {
-            pd.push({
-                x: state.current_truth.date,
-                y: state.current_truth.y,
-                type: 'scatter',
-                mode: 'lines',
-                name: 'Current Truth',
-                marker: {color: 'darkgray'}
-            })
-        }
-        if (state.selected_truth.includes('Truth as of') && Object.keys(state.as_of_truth).length !== 0) {
-            pd.push({
-                x: state.as_of_truth.date,
-                y: state.as_of_truth.y,
-                type: 'scatter',
-                mode: 'lines',
-                opacity: 0.5,
-                name: `Truth as of ${state.selected_as_of_date}`,
-                marker: {color: 'black'}
-            })
-        }
-
-        let pd0 = []
-        if (state.forecasts.length !== 0) {
-            // add the line for predictive medians
-            pd0 = Object.keys(state.forecasts).map((model) => {
-                if (state.selected_models.includes(model)) {
-                    const index = state.models.indexOf(model)
-                    const model_forecasts = state.forecasts[model]
-                    const date = model_forecasts.target_end_date
-                    const lq1 = model_forecasts['q0.025']
-                    const lq2 = model_forecasts['q0.25']
-                    const mid = model_forecasts['q0.5']
-                    const uq1 = model_forecasts['q0.75']
-                    const uq2 = model_forecasts['q0.975']
-
-                    // 1-3: sort model forecasts in order of target end date
-                    // 1) combine the arrays:
-                    const list = []
-                    for (let j = 0; j < date.length; j++) {
-                        list.push({
-                            date: date[j],
-                            lq1: lq1[j],
-                            lq2: lq2[j],
-                            uq1: uq1[j],
-                            uq2: uq2[j],
-                            mid: mid[j]
-                        })
-                    }
-
-                    // 2) sort:
-                    list.sort((a, b) => (moment(a.date).isBefore(b.date) ? -1 : 1))
-
-                    // 3) separate them back out:
-                    for (let k = 0; k < list.length; k++) {
-                        model_forecasts.target_end_date[k] = list[k].date
-                        model_forecasts['q0.025'][k] = list[k].lq1
-                        model_forecasts['q0.25'][k] = list[k].lq2
-                        model_forecasts['q0.5'][k] = list[k].mid
-                        model_forecasts['q0.75'][k] = list[k].uq1
-                        model_forecasts['q0.975'][k] = list[k].uq2
-                    }
-
-                    const x = [];
-                    if (Object.keys(state.as_of_truth).length !== 0) {
-                        x.push(state.as_of_truth.date.slice(-1)[0]);
-                    }
-                    x.push(model_forecasts.target_end_date.slice(0)[0]);
-
-                    const y = [];
-                    if (Object.keys(state.as_of_truth).length !== 0) {
-                        y.push(state.as_of_truth.y.slice(-1)[0]);
-                    }
-                    y.push(model_forecasts['q0.5'].slice(0)[0]);
-
-                    return {
-                        x: x,
-                        y: y,
-                        mode: 'lines',
-                        type: 'scatter',
-                        name: model,
-                        hovermode: false,
-                        opacity: 0.7,
-                        line: {color: state.colors[index]},
-                        hoverinfo: 'none'
-                    };
-                }
-                return []
-            })
-        }
-        pd = pd0.concat(...pd)
-
-        // add interval polygons
-        let pd1 = []
-        if (state.forecasts.length !== 0) {
-            pd1 = Object.keys(state.forecasts).map((model) => {  // notes that state.forecasts are still sorted
-                if (state.selected_models.includes(model)) {
-                    const index = state.models.indexOf(model)
-                    const is_hosp = state.selected_target_var === 'hosp'
-                    const mode = is_hosp ? 'lines' : 'lines+markers'
-                    const model_forecasts = state.forecasts[model]
-                    let upper_quantile
-                    let lower_quantile
-                    const plot_line = {
-                        // point forecast
-                        x: model_forecasts.target_end_date,
-                        y: model_forecasts['q0.5'],
-                        type: 'scatter',
-                        name: model,
-                        opacity: 0.7,
-                        mode,
-                        line: {color: state.colors[index]}
-                    }
-
-                    if (state.selected_interval === '50%') {
-                        lower_quantile = 'q0.25'
-                        upper_quantile = 'q0.75'
-                    } else if (state.selected_interval === '95%') {
-                        lower_quantile = 'q0.025'
-                        upper_quantile = 'q0.975'
-                    } else {
-                        return [plot_line]
-                    }
-
-                    const x = Object.keys(state.as_of_truth).length !== 0 ?
-                        state.as_of_truth.date.slice(-1).concat(model_forecasts.target_end_date) :
-                        model_forecasts.target_end_date;
-                    const y1 = Object.keys(state.as_of_truth).length !== 0 ?
-                        state.as_of_truth.y.slice(-1).concat(model_forecasts[lower_quantile]) :  // lower edge
-                        model_forecasts[lower_quantile];
-                    const y2 = Object.keys(state.as_of_truth).length !== 0 ?
-                        state.as_of_truth.y.slice(-1).concat(model_forecasts[upper_quantile]) :
-                        model_forecasts[upper_quantile];  // upper edge
-                    return [
-                        plot_line,
-                        {
-                            // interval forecast -- currently fixed at 50%
-                            x: [].concat(x, x.slice().reverse()),
-                            y: [].concat(y1, y2.slice().reverse()),
-                            fill: 'toself',
-                            fillcolor: state.colors[index],
-                            opacity: 0.3,
-                            line: {color: 'transparent'},
-                            type: 'scatter',
-                            name: model,
-                            showlegend: false,
-                            hoverinfo: 'skip'
-                        }
-                    ]
-                }
-                return []
-            })
-        }
-        pd = pd.concat(...pd1)
-
-        // done!
-        return pd
     },
 };
 
