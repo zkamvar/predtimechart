@@ -1,4 +1,5 @@
 import {_isInvalidUemName} from "./utils.js";
+import {showInfoModal} from "./ui.js";
 
 
 /**
@@ -48,7 +49,25 @@ function addEventHandlers(app, userEnsembleModel) {
     });
     $("#infoUserEnsemble").click(function (event) {
         event.preventDefault();
-        app.infoUserEnsemble(app, userEnsembleModel);
+        const modelName = userEnsembleModel.name;
+        const componentModels = userEnsembleModel.models.join(", ");
+        const lastError = (userEnsembleModel.lastError === null) ? '(no errors)' : userEnsembleModel.lastError;
+        const userInfoForm =
+            '<form>\n' +
+            '  <div class="form-group">\n' +
+            '    <label for="model-name" class="col-form-label">Model name:</label>\n' +
+            `    <input type="text" class="form-control" id="model-name" readonly value="${modelName}">\n` +
+            '  </div>\n' +
+            '  <div class="form-group">\n' +
+            '    <label for="model-list" class="col-form-label">Component models:</label>\n' +
+            `    <input type="text" class="form-control" id="model-list" readonly value="${componentModels}">\n` +
+            '  </div>\n' +
+            '  <div class="form-group">\n' +
+            '    <label for="last-error" class="col-form-label">Last error:</label>\n' +
+            `    <textarea class="form-control" id="last-error" readonly>${lastError}</textarea>\n` +
+            '  </div>\n' +
+            '</form>';
+        showInfoModal('User Ensemble Settings', userInfoForm);
     });
 
     // handle #uemEditModelNameModal activity:
