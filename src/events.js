@@ -4,16 +4,16 @@
 function addEventHandlers(app, userEnsembleModel) {
     // option, task ID, and interval selects
     $('#target_variable').change(function () {
-        app.eventHandlers['targetVariableSelected'](app, this.value);
+        app.targetVariableSelected(app, this.value);
     });
     Object.keys(app.state.task_ids).forEach(function (taskIdKey) {
         const $taskIdSelect = $(`#${taskIdKey}`);  // created by `createDomElements()`
         $taskIdSelect.change(function () {
-            app.eventHandlers['taskIdsSelected'](app, _selectedTaskIDs(app));
+            app.taskIdsSelected(app, _selectedTaskIDs(app));
         });
     });
     $('#intervals').change(function () {
-        app.eventHandlers['intervalSelected'](app, this.value);
+        app.intervalSelected(app, this.value);
     });
 
     // truth checkboxes
@@ -26,35 +26,35 @@ function addEventHandlers(app, userEnsembleModel) {
 
     // Shuffle Colours button
     $("#forecastViz_shuffle").click(function () {
-        app.eventHandlers['shuffleColors'](app);
+        app.shuffleColors(app);
     });
 
     // User Ensemble Model Actions dropdown button. NB: these will not be created by initialize() if !isUemEnabled,
     // but JQuery will not error if they don't exist :-)
     $("#addUserEnsemble").click(function (event) {
         event.preventDefault();
-        app.eventHandlers['addUserEnsemble'](app);
+        app.addUserEnsemble(app);
     });
     $("#removeUserEnsemble").click(function (event) {
         event.preventDefault();
-        app.eventHandlers['removeUserEnsemble'](app);
+        app.removeUserEnsemble(app);
     });
     $("#downloadUserEnsemble").click(function (event) {
         event.preventDefault();
-        app.eventHandlers['downloadUserEnsemble'](app, userEnsembleModel);
+        app.downloadUserEnsemble(app, userEnsembleModel);
     });
     $("#infoUserEnsemble").click(function (event) {
         event.preventDefault();
-        app.eventHandlers['infoUserEnsemble'](app, userEnsembleModel);
+        app.infoUserEnsemble(app, userEnsembleModel);
     });
 
     // handle #uemEditModelNameModal activity:
     $('#uemEditModelName').on('input', function () {
-        app.eventHandlers['uemEditModelNameInput'](app);
+        app.uemEditModelNameInput(app);
     });
     $("#uemEditSaveButton").click(function () {
         const newModelName = $("#uemEditModelName").val();
-        app.eventHandlers['uemEditSaveModelName'](app, userEnsembleModel, newModelName);
+        app.uemEditSaveModelName(app, userEnsembleModel, newModelName);
     });
     $("#editNameUserEnsemble").click(function (event) {
         event.preventDefault();
@@ -69,7 +69,7 @@ function addEventHandlers(app, userEnsembleModel) {
     $("#forecastViz_all").change(function () {
         const $this = $(this);
         const isChecked = $this.prop('checked');
-        app.eventHandlers['toggleModels'](app, isChecked);
+        app.toggleModels(app, isChecked);
     });
 
     // wire up model checkboxes
@@ -77,18 +77,18 @@ function addEventHandlers(app, userEnsembleModel) {
 
     // left and right buttons
     $("#decrement_as_of").click(function () {
-        app.eventHandlers['decrementAsOf'](app);
+        app.decrementAsOf(app);
     });
     $("#increment_as_of").click(function () {
-        app.eventHandlers['incrementAsOf'](app);
+        app.incrementAsOf(app);
     });
 
     // left and right keys
     window.addEventListener('keydown', function (event) {
         if (event.code === "ArrowLeft") {
-            app.eventHandlers['decrementAsOf'](app);
+            app.decrementAsOf(app);
         } else if (event.code === "ArrowRight") {
-            app.eventHandlers['incrementAsOf'](app);
+            app.incrementAsOf(app);
         }
     });
 }
@@ -116,7 +116,7 @@ function _setSelectedTruths(app) {
     if (isAsOfTruthChecked) {
         selectedTruths.push('Truth as of');
     }
-    app.eventHandlers['truthsSelected'](app, selectedTruths);
+    app.truthsSelected(app, selectedTruths);
 }
 
 
@@ -125,7 +125,7 @@ function addModelCheckEventHandler(app) {
         const $this = $(this);
         const model = $this.prop('id');
         const isChecked = $this.prop('checked');
-        app.eventHandlers['modelChecked'](app, model, isChecked);
+        app.modelChecked(app, model, isChecked);
     });
 }
 

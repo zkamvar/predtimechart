@@ -4,7 +4,7 @@
 
 import {addEventHandlers, addModelCheckEventHandler} from "./events.js";
 import {getPlotlyData, getPlotlyLayout} from "./plot.js";
-import {initializeUEMModals, createDomElements, initializeDateRangePicker} from "./ui.js";
+import {createDomElements, initializeDateRangePicker, initializeUEMModals} from "./ui.js";
 import _calcUemForecasts from './user-ensemble-model.js';
 import {_isInvalidUemName, download} from "./utils.js";
 import _validateOptions from './validation.js';
@@ -76,12 +76,6 @@ const App = {
 
     _calcUemForecasts: null,  // user ensemble model computation function as documented in `initialize()`
     isUemEnabled: true,       // true if user ensemble model feature is enabled
-
-
-    //
-    // app event handling
-    //
-    eventHandlers: {},  // maps eventName -> function as defined by `addEventHandlers()`. filled below
 
 
     //
@@ -539,203 +533,204 @@ const App = {
         }
         initializeDateRangePicker(this);  // b/c jquery binding is apparently lost with any Plotly.*() call
     },
-};
 
 
-//
-// set up event handlers (called by `addEventHandlers()`)
-//
+    //
+    // event handlers (called by `addEventHandlers()`)
+    //
 
-App.eventHandlers['targetVariableSelected'] = function (app, selectedTargetVar) {
-    app.uiState.selected_target_var = selectedTargetVar;  // write
-    app.fetchDataUpdatePlot(true, true, false);
-};
+    addUserEnsemble(app) {
+        console.debug("addUserEnsemble click", app.uiState.selected_models);
+        app.removeUserEnsembleModel();
+        app.addUserEnsembleModel();
+        app.updateModelsList();
+        app.updatePlot(true);
 
-App.eventHandlers['taskIdsSelected'] = function (app, selectedTaskIds) {
-    app.uiState.selected_task_ids = selectedTaskIds;  // write
-    app.fetchDataUpdatePlot(true, true, false);
-};
+        // todo xx these should be calls to an events.js function!:
+        $("#removeUserEnsemble").removeClass('disabled');    // enable
+        $("#downloadUserEnsemble").removeClass('disabled');  // ""
+        $("#infoUserEnsemble").removeClass('disabled');      // ""
+        $("#editNameUserEnsemble").addClass('disabled');     // disable
+    },
 
-App.eventHandlers['intervalSelected'] = function (app, selectedInterval) {
-    app.uiState.selected_interval = selectedInterval;  // write
-    app.fetchDataUpdatePlot(false, null, true);
-};
+    decrementAsOf(app) {
+        const appState = app.state;
+        const appUIState = app.uiState;
+        const as_of_index = appState.available_as_ofs[appUIState.selected_target_var].indexOf(appUIState.selected_as_of_date);
+        if (as_of_index > 0) {
+            appUIState.selected_as_of_date = appState.available_as_ofs[appUIState.selected_target_var][as_of_index - 1];  // write
+            app.fetchDataUpdatePlot(true, false, true);
+            app.updateTruthAsOfCheckboxText();
+        }
+    },
 
-App.eventHandlers['truthsSelected'] = function (app, selectedTruths) {
-    app.uiState.selected_truth = selectedTruths;  // write
-    app.fetchDataUpdatePlot(false, null, true);
-};
+    downloadUserEnsemble(app, userEnsembleModel) {
+        const appUIState = app.uiState;
+        console.debug("#downloadUserEnsemble click", userEnsembleModel.models, appUIState.selected_target_var, appUIState.selected_as_of_date);
+        let fileName = '';
+        app._calcUemForecasts(userEnsembleModel.models, appUIState.selected_target_var, appUIState.selected_as_of_date, userEnsembleModel.name)  // Promise
+            .then(response => {
+                if (!response.ok) {
+                    console.error('#downloadUserEnsemble click: bad response', response);
+                    return response.text().then(text => {
+                        throw new Error(text);
+                    })
+                }
 
-App.eventHandlers['shuffleColors'] = function (app) {
-    const appUIState = app.uiState;
-    appUIState.colors = appUIState.colors.sort(() => 0.5 - Math.random())  // write
-    app.updateModelsList();
-    app.updatePlot(true);
-};
+                // contentDisposition is like: "attachment; filename=\"2022-01-29-User-Ensemble.csv\""
+                const contentDisposition = Object.fromEntries(response.headers)['content-disposition'];
+                fileName = contentDisposition.split('"')[1];
+                return response.text();
+            })
+            .then((text) => {
+                console.debug("#downloadUserEnsemble click: data", typeof (text), fileName);
+                download(text, 'text/csv', fileName);
+                console.debug("#downloadUserEnsemble click: download() done");
 
-App.eventHandlers['addUserEnsemble'] = function (app) {
-    console.debug("addUserEnsemble click", app.uiState.selected_models);
-    app.removeUserEnsembleModel();
-    app.addUserEnsembleModel();
-    app.updateModelsList();
-    app.updatePlot(true);
+                // configure and show the info modal
+                // todo xx these should be calls to an events.js function!:
+                $('#uemInfoModalTitle').html('CSV File Downloaded');
+                $('#uemInfoModalBody').html(`User ensemble downloaded to "${fileName}".`);
+                $('#uemInfoModal').modal('show');
+            })
+            .catch(error => {  // NB: fetch() does not generate an error for 4__ responses
+                console.error(`#downloadUserEnsemble click: error: ${error.message}`)
 
-    // todo xx these should be calls to an events.js function!:
-    $("#removeUserEnsemble").removeClass('disabled');    // enable
-    $("#downloadUserEnsemble").removeClass('disabled');  // ""
-    $("#infoUserEnsemble").removeClass('disabled');      // ""
-    $("#editNameUserEnsemble").addClass('disabled');     // disable
-};
+                // configure and show the info modal
+                // todo xx these should be calls to an events.js function!:
+                $('#uemInfoModalTitle').html('Error Downloading CVS File');
+                $('#uemInfoModalBody').html(`"${error.message}"`);
+                $('#uemInfoModal').modal('show');
+            });
+    },
 
-App.eventHandlers['removeUserEnsemble'] = function (app) {
-    app.removeUserEnsembleModel();
-    app.updateModelsList();
-    app.updatePlot(true);
+    incrementAsOf(app) {
+        const appState = app.state;
+        const appUIState = app.uiState;
+        const as_of_index = appState.available_as_ofs[appUIState.selected_target_var].indexOf(appUIState.selected_as_of_date);
+        if (as_of_index < appState.available_as_ofs[appUIState.selected_target_var].length - 1) {
+            appUIState.selected_as_of_date = appState.available_as_ofs[appUIState.selected_target_var][as_of_index + 1];  // write
+            app.fetchDataUpdatePlot(true, false, true);
+            app.updateTruthAsOfCheckboxText();
+        }
+    },
 
-    // todo xx these should be calls to an events.js function!:
-    $("#removeUserEnsemble").addClass('disabled');       // disable
-    $("#downloadUserEnsemble").addClass('disabled');     // ""
-    $("#infoUserEnsemble").addClass('disabled');         // ""
-    $("#editNameUserEnsemble").removeClass('disabled');  // enable
-};
+    infoUserEnsemble(app, userEnsembleModel) {
+        // configure and show the info modal
+        const modelName = userEnsembleModel.name;
+        const componentModels = userEnsembleModel.models.join(", ");
+        const lastError = (userEnsembleModel.lastError === null) ? '(no errors)' : userEnsembleModel.lastError;
 
-App.eventHandlers['downloadUserEnsemble'] = function (app, userEnsembleModel) {
-    const appUIState = app.uiState;
-    console.debug("#downloadUserEnsemble click", userEnsembleModel.models, appUIState.selected_target_var, appUIState.selected_as_of_date);
-    let fileName = '';
-    app._calcUemForecasts(userEnsembleModel.models, appUIState.selected_target_var, appUIState.selected_as_of_date, userEnsembleModel.name)  // Promise
-        .then(response => {
-            if (!response.ok) {
-                console.error('#downloadUserEnsemble click: bad response', response);
-                return response.text().then(text => {
-                    throw new Error(text);
-                })
-            }
+        // todo xx these should be calls to an events.js function!:
+        const $userInfoForm = $(
+            '<form>\n' +
+            '  <div class="form-group">\n' +
+            '    <label for="model-name" class="col-form-label">Model name:</label>\n' +
+            `    <input type="text" class="form-control" id="model-name" readonly value="${modelName}">\n` +
+            '  </div>\n' +
+            '  <div class="form-group">\n' +
+            '    <label for="model-list" class="col-form-label">Component models:</label>\n' +
+            `    <input type="text" class="form-control" id="model-list" readonly value="${componentModels}">\n` +
+            '  </div>\n' +
+            '  <div class="form-group">\n' +
+            '    <label for="last-error" class="col-form-label">Last error:</label>\n' +
+            `    <textarea class="form-control" id="last-error" readonly>${lastError}</textarea>\n` +
+            '  </div>\n' +
+            '</form>'
+        );
+        $('#uemInfoModalTitle').html('User Ensemble Settings');
+        $('#uemInfoModalBody').html($userInfoForm);
+        $('#uemInfoModal').modal('show');
+    },
 
-            // contentDisposition is like: "attachment; filename=\"2022-01-29-User-Ensemble.csv\""
-            const contentDisposition = Object.fromEntries(response.headers)['content-disposition'];
-            fileName = contentDisposition.split('"')[1];
-            return response.text();
-        })
-        .then((text) => {
-            console.debug("#downloadUserEnsemble click: data", typeof (text), fileName);
-            download(text, 'text/csv', fileName);
-            console.debug("#downloadUserEnsemble click: download() done");
+    intervalSelected(app, selectedInterval) {
+        app.uiState.selected_interval = selectedInterval;  // write
+        app.fetchDataUpdatePlot(false, null, true);
+    },
 
-            // configure and show the info modal
-            // todo xx these should be calls to an events.js function!:
-            $('#uemInfoModalTitle').html('CSV File Downloaded');
-            $('#uemInfoModalBody').html(`User ensemble downloaded to "${fileName}".`);
-            $('#uemInfoModal').modal('show');
-        })
-        .catch(error => {  // NB: fetch() does not generate an error for 4__ responses
-            console.error(`#downloadUserEnsemble click: error: ${error.message}`)
+    modelChecked(app, model, isChecked) {
+        const appUIState = app.uiState;
+        const isInSelectedModels = (appUIState.selected_models.indexOf(model) > -1);
+        if (isChecked && !isInSelectedModels) {
+            appUIState.selected_models.push(model);  // write
+        } else if (!isChecked && isInSelectedModels) {
+            appUIState.selected_models = appUIState.selected_models.filter(function (value) {  // write
+                return value !== model;
+            });  // appUIState.selected_models.remove(model);
+        }
+        app.fetchDataUpdatePlot(false, null, true);
+    },
 
-            // configure and show the info modal
-            // todo xx these should be calls to an events.js function!:
-            $('#uemInfoModalTitle').html('Error Downloading CVS File');
-            $('#uemInfoModalBody').html(`"${error.message}"`);
-            $('#uemInfoModal').modal('show');
-        });
-};
+    removeUserEnsemble(app) {
+        app.removeUserEnsembleModel();
+        app.updateModelsList();
+        app.updatePlot(true);
 
-App.eventHandlers['infoUserEnsemble'] = function (app, userEnsembleModel) {
-    // configure and show the info modal
-    const modelName = userEnsembleModel.name;
-    const componentModels = userEnsembleModel.models.join(", ");
-    const lastError = (userEnsembleModel.lastError === null) ? '(no errors)' : userEnsembleModel.lastError;
+        // todo xx these should be calls to an events.js function!:
+        $("#removeUserEnsemble").addClass('disabled');       // disable
+        $("#downloadUserEnsemble").addClass('disabled');     // ""
+        $("#infoUserEnsemble").addClass('disabled');         // ""
+        $("#editNameUserEnsemble").removeClass('disabled');  // enable
+    },
 
-    // todo xx these should be calls to an events.js function!:
-    const $userInfoForm = $(
-        '<form>\n' +
-        '  <div class="form-group">\n' +
-        '    <label for="model-name" class="col-form-label">Model name:</label>\n' +
-        `    <input type="text" class="form-control" id="model-name" readonly value="${modelName}">\n` +
-        '  </div>\n' +
-        '  <div class="form-group">\n' +
-        '    <label for="model-list" class="col-form-label">Component models:</label>\n' +
-        `    <input type="text" class="form-control" id="model-list" readonly value="${componentModels}">\n` +
-        '  </div>\n' +
-        '  <div class="form-group">\n' +
-        '    <label for="last-error" class="col-form-label">Last error:</label>\n' +
-        `    <textarea class="form-control" id="last-error" readonly>${lastError}</textarea>\n` +
-        '  </div>\n' +
-        '</form>'
-    );
-    $('#uemInfoModalTitle').html('User Ensemble Settings');
-    $('#uemInfoModalBody').html($userInfoForm);
-    $('#uemInfoModal').modal('show');
-};
+    shuffleColors(app) {
+        const appUIState = app.uiState;
+        appUIState.colors = appUIState.colors.sort(() => 0.5 - Math.random())  // write
+        app.updateModelsList();
+        app.updatePlot(true);
+    },
 
-App.eventHandlers['uemEditModelNameInput'] = function (app) {
-    // validate model name edit on each keystroke, displaying the result:
-    // todo xx these should be calls to an events.js function!:
-    const modelName = $('#uemEditModelName').val();
-    const isInvalid = _isInvalidUemName(app.state.models, modelName);  // error message if invalid; false if valid
-    const $invalidFeedbackDiv = $('#uemEditModelNameModal .invalid-feedback');
-    const $modelNameInput = $('#uemEditModelNameModal input');
-    if (isInvalid) {
-        $invalidFeedbackDiv.html(isInvalid);
-        $invalidFeedbackDiv.show();
-        $modelNameInput.addClass('is-invalid')
-    } else {
-        $invalidFeedbackDiv.html('');
-        $invalidFeedbackDiv.hide();
-        $modelNameInput.removeClass('is-invalid')
-    }
-};
+    targetVariableSelected(app, selectedTargetVar) {
+        app.uiState.selected_target_var = selectedTargetVar;  // write
+        app.fetchDataUpdatePlot(true, true, false);
+    },
 
-App.eventHandlers['uemEditSaveModelName'] = function (app, userEnsembleModel, newModelName) {
-    // save the new name (assumed valid)
-    userEnsembleModel.name = newModelName;
-    console.info(`saved new user ensemble model name: '${newModelName}'`);
-};
+    taskIdsSelected(app, selectedTaskIds) {
+        app.uiState.selected_task_ids = selectedTaskIds;  // write
+        app.fetchDataUpdatePlot(true, true, false);
+    },
 
-App.eventHandlers['toggleModels'] = function (app, isChecked) {
-    const appUIState = app.uiState;
-    if (isChecked) {
-        appUIState.last_selected_models = appUIState.selected_models;  // write
-        appUIState.selected_models = app.selectableModels();            // write
-    } else {
-        appUIState.selected_models = appUIState.last_selected_models;  // write
-    }
-    app.checkModels(appUIState.selected_models);
-    app.updatePlot(true);
-};
+    toggleModels(app, isChecked) {
+        const appUIState = app.uiState;
+        if (isChecked) {
+            appUIState.last_selected_models = appUIState.selected_models;  // write
+            appUIState.selected_models = app.selectableModels();            // write
+        } else {
+            appUIState.selected_models = appUIState.last_selected_models;  // write
+        }
+        app.checkModels(appUIState.selected_models);
+        app.updatePlot(true);
+    },
 
-App.eventHandlers['decrementAsOf'] = function (app) {
-    const appState = app.state;
-    const appUIState = app.uiState;
-    const as_of_index = appState.available_as_ofs[appUIState.selected_target_var].indexOf(appUIState.selected_as_of_date);
-    if (as_of_index > 0) {
-        appUIState.selected_as_of_date = appState.available_as_ofs[appUIState.selected_target_var][as_of_index - 1];  // write
-        app.fetchDataUpdatePlot(true, false, true);
-        app.updateTruthAsOfCheckboxText();
-    }
-};
+    truthsSelected(app, selectedTruths) {
+        app.uiState.selected_truth = selectedTruths;  // write
+        app.fetchDataUpdatePlot(false, null, true);
+    },
 
-App.eventHandlers['incrementAsOf'] = function (app) {
-    const appState = app.state;
-    const appUIState = app.uiState;
-    const as_of_index = appState.available_as_ofs[appUIState.selected_target_var].indexOf(appUIState.selected_as_of_date);
-    if (as_of_index < appState.available_as_ofs[appUIState.selected_target_var].length - 1) {
-        appUIState.selected_as_of_date = appState.available_as_ofs[appUIState.selected_target_var][as_of_index + 1];  // write
-        app.fetchDataUpdatePlot(true, false, true);
-        app.updateTruthAsOfCheckboxText();
-    }
-};
+    uemEditModelNameInput(app) {
+        // validate model name edit on each keystroke, displaying the result:
+        // todo xx these should be calls to an events.js function!:
+        const modelName = $('#uemEditModelName').val();
+        const isInvalid = _isInvalidUemName(app.state.models, modelName);  // error message if invalid; false if valid
+        const $invalidFeedbackDiv = $('#uemEditModelNameModal .invalid-feedback');
+        const $modelNameInput = $('#uemEditModelNameModal input');
+        if (isInvalid) {
+            $invalidFeedbackDiv.html(isInvalid);
+            $invalidFeedbackDiv.show();
+            $modelNameInput.addClass('is-invalid')
+        } else {
+            $invalidFeedbackDiv.html('');
+            $invalidFeedbackDiv.hide();
+            $modelNameInput.removeClass('is-invalid')
+        }
+    },
 
-App.eventHandlers['modelChecked'] = function (app, model, isChecked) {
-    const appUIState = app.uiState;
-    const isInSelectedModels = (appUIState.selected_models.indexOf(model) > -1);
-    if (isChecked && !isInSelectedModels) {
-        appUIState.selected_models.push(model);  // write
-    } else if (!isChecked && isInSelectedModels) {
-        appUIState.selected_models = appUIState.selected_models.filter(function (value) {  // write
-            return value !== model;
-        });  // appUIState.selected_models.remove(model);
-    }
-    app.fetchDataUpdatePlot(false, null, true);
+    uemEditSaveModelName(app, userEnsembleModel, newModelName) {
+        // save the new name (assumed valid)
+        userEnsembleModel.name = newModelName;
+        console.info(`saved new user ensemble model name: '${newModelName}'`);
+    },
+
 };
 
 
