@@ -5,7 +5,7 @@ module.exports = {
     experiments: {
         outputModule: true,
     },
-    mode: 'development',
+    mode: 'production',
     entry: [ // order is crucial
         './src/styles.js',
         './src/predtimechart.js',
