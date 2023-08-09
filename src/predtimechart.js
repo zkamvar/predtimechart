@@ -9,6 +9,9 @@ import {
     createDomElements,
     getPlotlyDiv,
     initializeDateRangePicker,
+    initializeTargetVarsUI,
+    initializeTaskIDsUI,
+    initializeIntervalsUI,
     initializeUEMModals,
     setDisclaimer,
     showInfoModal,
@@ -187,9 +190,9 @@ const App = {
 
     initializeUI(disclaimer) {
         // populate options and models list (left column)
-        this.initializeTargetVarsUI();
-        this.initializeTaskIDsUI();
-        this.initializeIntervalsUI();
+        initializeTargetVarsUI(this);
+        initializeTaskIDsUI(this);
+        initializeIntervalsUI(this);
         updateModelsList(this, USER_ENSEMBLE_MODEL);
 
         // initialize current and as_of truth checkboxes' text
@@ -216,46 +219,6 @@ const App = {
             }]
         });
         initializeDateRangePicker(this);  // b/c jquery binding is apparently lost with any Plotly.*() call
-    },
-
-    initializeTargetVarsUI() {
-        // populate the target variable <SELECT>
-        const $targetVarsSelect = $("#target_variable");
-        const thisUIState = this.uiState;
-        // $targetVarsSelect.empty();
-        this.state.target_variables.forEach(function (targetVar) {
-            const selected = targetVar.value === thisUIState.selected_target_var ? 'selected' : '';
-            const optionNode = `<option value="${targetVar.value}" ${selected} >${targetVar.text}</option>`;
-            $targetVarsSelect.append(optionNode);
-        });
-    },
-
-    initializeTaskIDsUI() {
-        // populate task ID-related <SELECT>s
-        const thisState = this.state;
-        const initialTaskIds = this.uiState.selected_task_ids;
-        Object.keys(this.state.task_ids).forEach(function (taskIdKey) {
-            const $taskIdSelect = $(`#${taskIdKey}`);  // created by `createDomElements()`
-            // $taskIdSelect.empty();
-            const taskIdValueObjs = thisState.task_ids[taskIdKey];
-            taskIdValueObjs.forEach(taskIdValueObj => {
-                const selected = taskIdValueObj.value === initialTaskIds[taskIdKey] ? 'selected' : '';
-                const optionNode = `<option value="${taskIdValueObj.value}" ${selected} >${taskIdValueObj.text}</option>`;
-                $taskIdSelect.append(optionNode);
-            });
-        });
-    },
-
-    initializeIntervalsUI() {
-        // populate the interval <SELECT>
-        const $intervalsSelect = $("#intervals");
-        const thisUIState = this.uiState;
-        // $intervalsSelect.empty();
-        this.state.intervals.forEach(function (interval) {
-            const selected = interval === thisUIState.selected_interval ? 'selected' : '';
-            const optionNode = `<option value="${interval}" ${selected} >${interval}</option>`;
-            $intervalsSelect.append(optionNode);
-        });
     },
 
     //

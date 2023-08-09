@@ -216,6 +216,49 @@ function initializeDateRangePicker(app) {
 }
 
 
+function initializeTargetVarsUI(app) {
+    // populate the target variable <SELECT>
+    const uiState = app.uiState;
+    const $targetVarsSelect = $("#target_variable");
+    // $targetVarsSelect.empty();
+    app.state.target_variables.forEach(function (targetVar) {
+        const selected = targetVar.value === uiState.selected_target_var ? 'selected' : '';
+        const optionNode = `<option value="${targetVar.value}" ${selected} >${targetVar.text}</option>`;
+        $targetVarsSelect.append(optionNode);
+    });
+}
+
+
+function initializeTaskIDsUI(app) {
+    // populate task ID-related <SELECT>s
+    const appState = app.state;
+    const initialTaskIds = app.uiState.selected_task_ids;
+    Object.keys(app.state.task_ids).forEach(function (taskIdKey) {
+        const $taskIdSelect = $(`#${taskIdKey}`);  // created by `createDomElements()`
+        // $taskIdSelect.empty();
+        const taskIdValueObjs = appState.task_ids[taskIdKey];
+        taskIdValueObjs.forEach(taskIdValueObj => {
+            const selected = taskIdValueObj.value === initialTaskIds[taskIdKey] ? 'selected' : '';
+            const optionNode = `<option value="${taskIdValueObj.value}" ${selected} >${taskIdValueObj.text}</option>`;
+            $taskIdSelect.append(optionNode);
+        });
+    });
+}
+
+
+function initializeIntervalsUI(app) {
+    // populate the interval <SELECT>
+    const uiState = app.uiState;
+    const $intervalsSelect = $("#intervals");
+    // $intervalsSelect.empty();
+    app.state.intervals.forEach(function (interval) {
+        const selected = interval === uiState.selected_interval ? 'selected' : '';
+        const optionNode = `<option value="${interval}" ${selected} >${interval}</option>`;
+        $intervalsSelect.append(optionNode);
+    });
+}
+
+
 //
 // updateModelsList()
 //
@@ -359,6 +402,9 @@ export {
     createDomElements,
     getPlotlyDiv,
     initializeDateRangePicker,
+    initializeTargetVarsUI,
+    initializeTaskIDsUI,
+    initializeIntervalsUI,
     initializeUEMModals,
     setDisclaimer,
     showInfoModal,
