@@ -2,9 +2,15 @@
  * predtimechart: A JavaScript (ES6 ECMAScript) module for forecast visualization.
  */
 
-import {addEventHandlers, addModelCheckEventHandler} from "./events.js";
+import {addEventHandlers} from "./events.js";
 import {getPlotlyData, getPlotlyLayout} from "./plot.js";
-import {createDomElements, initializeDateRangePicker, initializeUEMModals} from "./ui.js";
+import {
+    createDomElements,
+    initializeDateRangePicker,
+    initializeUEMModals,
+    showInfoModal,
+    updateModelsList
+} from "./ui.js";
 import _calcUemForecasts from './user-ensemble-model.js';
 import {_isInvalidUemName, download} from "./utils.js";
 import _validateOptions from './validation.js';
@@ -18,45 +24,6 @@ const USER_ENSEMBLE_MODEL = {  // contains all information about the model
     name: 'User-Ensemble',  // must be a valid name, e.g., no spaces, commas, etc.
     models: [],             // list of model names making up current UEM when it was added by addUserEnsembleModel()
     lastError: null        // Error from last call to _calcUemForecasts()
-}
-
-
-/**
- * Updates the user ensemble model's error icon in the models list based on USER_ENSEMBLE_MODEL.lastError .
- *
- * @private
- */
-function _updateUemErrorIcon(userEnsembleModel) {
-    const error = userEnsembleModel.lastError;
-    const $modelCheckboxParent = $(`#${userEnsembleModel.name}`).parent();  // the <label> - see _selectModelDiv()
-    if (error === null) {
-        $modelCheckboxParent.children('img').remove();
-    } else {
-        const imgSrc = "https://github.githubassets.com/images/icons/emoji/unicode/26a0.png";
-        const $img = $(
-            `<img src="${imgSrc}" title="${error}" alt="${error}"\n` +
-            `    class="align-baseline" style="height: 16px; width: 16px; display: inline-block;" >`
-        );
-        $modelCheckboxParent.after('&nbsp;', $img);
-    }
-}
-
-
-//
-// helper functions
-//
-
-// `updateModelsList()` helper
-function _selectModelDiv(model, modelColor, isEnabled, isChecked) {
-    const checked = isChecked ? 'checked' : '';
-    return `<div class="form-group form-check"
-                 style="margin-bottom: 0${!isEnabled ? '; color: lightgrey' : ''}">
-                <label>
-                    <input type="checkbox" id="${model}" class="model-check" ${checked}>
-                    &nbsp;${model}
-                    &nbsp;<span class="forecastViz_dot" style="background-color: ${modelColor}; "></span>
-                </label>
-            </div>`;
 }
 
 
@@ -192,11 +159,8 @@ const App = {
             if (this.state.models.includes(newUemName)) {
                 console.warn('USER_ENSEMBLE_MODEL.name conflict. disabling human judgement ensemble model feature',
                     USER_ENSEMBLE_MODEL.name, this.state.models);
-
-                // configure and show the info modal
-                $('#uemInfoModalTitle').html('Disabling human judgement ensemble model feature');
-                $('#uemInfoModalBody').html(`The default name '${USER_ENSEMBLE_MODEL.name}' was in the models list.`);
-                $('#uemInfoModal').modal('show');
+                showInfoModal('Disabling human judgement ensemble model feature',
+                    `The default name '${USER_ENSEMBLE_MODEL.name}' was in the models list.`);
             } else {
                 USER_ENSEMBLE_MODEL.name = newUemName;
                 console.warn('USER_ENSEMBLE_MODEL.name conflict. renamed', USER_ENSEMBLE_MODEL.name,
@@ -223,7 +187,7 @@ const App = {
         this.initializeTargetVarsUI();
         this.initializeTaskIDsUI();
         this.initializeIntervalsUI();
-        this.updateModelsList();
+        updateModelsList(this, USER_ENSEMBLE_MODEL);
 
         // initialize current and as_of truth checkboxes' text
         $("#currentTruthDate").text(`Current (${this.state.current_date})`);
@@ -292,42 +256,6 @@ const App = {
         });
     },
 
-    updateModelsList() {
-        // populate the select model div
-        const $selectModelDiv = $("#forecastViz_select_model");
-        const thisState = this.state;
-        const thisUIState = this.uiState;
-        $selectModelDiv.empty();
-
-        // split models into two groups: those with forecasts (enabled, colored) and those without (disabled, gray)
-        // 1. add models with forecasts
-        this.state.models
-            .filter(function (model) {
-                return App.state.forecasts.hasOwnProperty(model);
-            })
-            .forEach(function (model) {
-                const isChecked = (thisUIState.selected_models.indexOf(model) > -1);
-                const modelIdx = thisState.models.indexOf(model);
-                $selectModelDiv.append(_selectModelDiv(model, thisUIState.colors[modelIdx], true, isChecked));
-            });
-
-        // 2. add models without forecasts
-        this.state.models
-            .filter(function (model) {
-                return !App.state.forecasts.hasOwnProperty(model);
-            })
-            .forEach(function (model) {
-                const isChecked = (thisUIState.selected_models.indexOf(model) > -1);
-                $selectModelDiv.append(_selectModelDiv(model, 'grey', false, isChecked));
-            });
-
-        // re-wire up model checkboxes
-        addModelCheckEventHandler(this);
-
-        // update the user ensemble model's error icon
-        _updateUemErrorIcon(USER_ENSEMBLE_MODEL);
-    },
-
     updateTruthAsOfCheckboxText() {
         $("#asOfTruthDate").text(`As of ${this.uiState.selected_as_of_date}`);
     },
@@ -390,7 +318,7 @@ const App = {
                     }
                 }
 
-                this.updateModelsList();
+                updateModelsList(this, USER_ENSEMBLE_MODEL);
                 this.updatePlot(isPreserveYLimit);
                 if (this.isIndicateRedraw) {
                     $plotyDiv.fadeTo(0, 1.0);
@@ -453,12 +381,8 @@ const App = {
         // validation #1
         if (componentModels.length <= 1) {
             console.warn(`addUserEnsembleModel(): must select two or more componentModels. #selected=${componentModels.length}`);
-
-            // configure and show the info modal
-            $('#uemInfoModalTitle').html('Invalid Component Models');
-            $('#uemInfoModalBody').html(`Must select two or more componentModels (${componentModels.length} selected).`);
-            $('#uemInfoModal').modal('show');
-
+            showInfoModal('Invalid Component Models',
+                `Must select two or more componentModels (${componentModels.length} selected).`);
             return;
         }
 
@@ -543,7 +467,7 @@ const App = {
         console.debug("addUserEnsemble click", app.uiState.selected_models);
         app.removeUserEnsembleModel();
         app.addUserEnsembleModel();
-        app.updateModelsList();
+        updateModelsList(app, USER_ENSEMBLE_MODEL);
         app.updatePlot(true);
 
         // todo xx these should be calls to an events.js function!:
@@ -586,21 +510,11 @@ const App = {
                 console.debug("#downloadUserEnsemble click: data", typeof (text), fileName);
                 download(text, 'text/csv', fileName);
                 console.debug("#downloadUserEnsemble click: download() done");
-
-                // configure and show the info modal
-                // todo xx these should be calls to an events.js function!:
-                $('#uemInfoModalTitle').html('CSV File Downloaded');
-                $('#uemInfoModalBody').html(`User ensemble downloaded to "${fileName}".`);
-                $('#uemInfoModal').modal('show');
+                showInfoModal('CSV File Downloaded', `User ensemble downloaded to "${fileName}".`);
             })
             .catch(error => {  // NB: fetch() does not generate an error for 4__ responses
                 console.error(`#downloadUserEnsemble click: error: ${error.message}`)
-
-                // configure and show the info modal
-                // todo xx these should be calls to an events.js function!:
-                $('#uemInfoModalTitle').html('Error Downloading CVS File');
-                $('#uemInfoModalBody').html(`"${error.message}"`);
-                $('#uemInfoModal').modal('show');
+                showInfoModal('Error Downloading CVS File', `"${error.message}"`);
             });
     },
 
@@ -638,9 +552,7 @@ const App = {
             '  </div>\n' +
             '</form>'
         );
-        $('#uemInfoModalTitle').html('User Ensemble Settings');
-        $('#uemInfoModalBody').html($userInfoForm);
-        $('#uemInfoModal').modal('show');
+        showInfoModal('User Ensemble Settings', $userInfoForm);
     },
 
     intervalSelected(app, selectedInterval) {
@@ -663,7 +575,7 @@ const App = {
 
     removeUserEnsemble(app) {
         app.removeUserEnsembleModel();
-        app.updateModelsList();
+        updateModelsList(app, USER_ENSEMBLE_MODEL);
         app.updatePlot(true);
 
         // todo xx these should be calls to an events.js function!:
@@ -676,7 +588,7 @@ const App = {
     shuffleColors(app) {
         const appUIState = app.uiState;
         appUIState.colors = appUIState.colors.sort(() => 0.5 - Math.random())  // write
-        app.updateModelsList();
+        updateModelsList(app, USER_ENSEMBLE_MODEL);
         app.updatePlot(true);
     },
 

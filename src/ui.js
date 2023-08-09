@@ -3,6 +3,7 @@
 //
 
 import {closestYear} from "./utils.js";
+import {addModelCheckEventHandler} from "./events.js";
 
 /**
  * UI helper that creates the two modals usedto view and edit user ensemble model.
@@ -54,6 +55,20 @@ function initializeUEMModals() {
         '</div>'
     );
     $(document.body).append($uemEditModelNameModalDiv);
+}
+
+
+/**
+ * Utility that shows a modal dialog with the passed title and body. Requires that `initializeUEMModals()` was called
+ * once prior.
+ *
+ * @param title
+ * @param body
+ */
+function showInfoModal(title, body) {
+    $('#uemInfoModalTitle').html(title);
+    $('#uemInfoModalBody').html(body);
+    $('#uemInfoModal').modal('show');
 }
 
 
@@ -201,6 +216,79 @@ function initializeDateRangePicker(app) {
 }
 
 
+//
+// updateModelsList()
+//
+
+/**
+ * Populates the list of models.
+ */
+function updateModelsList(app, userEnsembleModel) {
+    // populate the select model div
+    const $selectModelDiv = $("#forecastViz_select_model");
+    const appState = app.state;
+    const uiState = app.uiState;
+    $selectModelDiv.empty();
+
+    // split models into two groups: those with forecasts (enabled, colored) and those without (disabled, gray)
+    // 1. add models with forecasts
+    app.state.models
+        .filter(function (model) {
+            return app.state.forecasts.hasOwnProperty(model);
+        })
+        .forEach(function (model) {
+            const isChecked = (uiState.selected_models.indexOf(model) > -1);
+            const modelIdx = appState.models.indexOf(model);
+            $selectModelDiv.append(_selectModelDiv(model, uiState.colors[modelIdx], true, isChecked));
+        });
+
+    // 2. add models without forecasts
+    app.state.models
+        .filter(function (model) {
+            return !app.state.forecasts.hasOwnProperty(model);
+        })
+        .forEach(function (model) {
+            const isChecked = (uiState.selected_models.indexOf(model) > -1);
+            $selectModelDiv.append(_selectModelDiv(model, 'grey', false, isChecked));
+        });
+
+    // re-wire up model checkboxes
+    addModelCheckEventHandler(app);
+
+    // update the user ensemble model's error icon
+    _updateUemErrorIcon(userEnsembleModel);
+}
+
+
+function _selectModelDiv(model, modelColor, isEnabled, isChecked) {
+    const checked = isChecked ? 'checked' : '';
+    return `<div class="form-group form-check"
+                 style="margin-bottom: 0${!isEnabled ? '; color: lightgrey' : ''}">
+                <label>
+                    <input type="checkbox" id="${model}" class="model-check" ${checked}>
+                    &nbsp;${model}
+                    &nbsp;<span class="forecastViz_dot" style="background-color: ${modelColor}; "></span>
+                </label>
+            </div>`;
+}
+
+
+function _updateUemErrorIcon(userEnsembleModel) {
+    const error = userEnsembleModel.lastError;
+    const $modelCheckboxParent = $(`#${userEnsembleModel.name}`).parent();  // the <label> - see _selectModelDiv()
+    if (error === null) {
+        $modelCheckboxParent.children('img').remove();
+    } else {
+        const imgSrc = "https://github.githubassets.com/images/icons/emoji/unicode/26a0.png";
+        const $img = $(
+            `<img src="${imgSrc}" title="${error}" alt="${error}"\n` +
+            `    class="align-baseline" style="height: 16px; width: 16px; display: inline-block;" >`
+        );
+        $modelCheckboxParent.after('&nbsp;', $img);
+    }
+}
+
+
 // export
 
-export {initializeUEMModals, createDomElements, initializeDateRangePicker};
+export {initializeUEMModals, createDomElements, initializeDateRangePicker, updateModelsList, showInfoModal};
