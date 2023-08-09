@@ -13,7 +13,7 @@ import {
     updateUEMActions
 } from "./ui.js";
 import _calcUemForecasts from './user-ensemble-model.js';
-import {_isInvalidUemName, download} from "./utils.js";
+import {download} from "./utils.js";
 import _validateOptions from './validation.js';
 
 
@@ -608,24 +608,6 @@ const App = {
     truthsSelected(app, selectedTruths) {
         app.uiState.selected_truth = selectedTruths;  // write
         app.fetchDataUpdatePlot(false, null, true);
-    },
-
-    uemEditModelNameInput(app) {
-        // validate model name edit on each keystroke, displaying the result:
-        // todo xx these should be calls to an events.js function!:
-        const modelName = $('#uemEditModelName').val();
-        const isInvalid = _isInvalidUemName(app.state.models, modelName);  // error message if invalid; false if valid
-        const $invalidFeedbackDiv = $('#uemEditModelNameModal .invalid-feedback');
-        const $modelNameInput = $('#uemEditModelNameModal input');
-        if (isInvalid) {
-            $invalidFeedbackDiv.html(isInvalid);
-            $invalidFeedbackDiv.show();
-            $modelNameInput.addClass('is-invalid')
-        } else {
-            $invalidFeedbackDiv.html('');
-            $invalidFeedbackDiv.hide();
-            $modelNameInput.removeClass('is-invalid')
-        }
     },
 
     uemEditSaveModelName(app, userEnsembleModel, newModelName) {

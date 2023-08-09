@@ -1,3 +1,6 @@
+import {_isInvalidUemName} from "./utils.js";
+
+
 /**
  * UI helper function
  */
@@ -50,7 +53,20 @@ function addEventHandlers(app, userEnsembleModel) {
 
     // handle #uemEditModelNameModal activity:
     $('#uemEditModelName').on('input', function () {
-        app.uemEditModelNameInput(app);
+        // validate model name edit on each keystroke, displaying the result:
+        const modelName = $('#uemEditModelName').val();
+        const isInvalid = _isInvalidUemName(app.state.models, modelName);  // error message if invalid; false if valid
+        const $invalidFeedbackDiv = $('#uemEditModelNameModal .invalid-feedback');
+        const $modelNameInput = $('#uemEditModelNameModal input');
+        if (isInvalid) {
+            $invalidFeedbackDiv.html(isInvalid);
+            $invalidFeedbackDiv.show();
+            $modelNameInput.addClass('is-invalid')
+        } else {
+            $invalidFeedbackDiv.html('');
+            $invalidFeedbackDiv.hide();
+            $modelNameInput.removeClass('is-invalid')
+        }
     });
     $("#uemEditSaveButton").click(function () {
         const newModelName = $("#uemEditModelName").val();
