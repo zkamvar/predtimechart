@@ -10,7 +10,8 @@ import {
     initializeUEMModals,
     showInfoModal,
     updateModelsList,
-    updateUEMActions
+    updateUEMActions,
+    updateTruthCheckboxText
 } from "./ui.js";
 import _calcUemForecasts from './user-ensemble-model.js';
 import {download} from "./utils.js";
@@ -191,8 +192,8 @@ const App = {
         updateModelsList(this, USER_ENSEMBLE_MODEL);
 
         // initialize current and as_of truth checkboxes' text
-        $("#currentTruthDate").text(`Current (${this.state.current_date})`);
-        this.updateTruthAsOfCheckboxText();
+        updateTruthCheckboxText(true, this.state.current_date);            // current
+        updateTruthCheckboxText(false, this.uiState.selected_as_of_date);  // as_of
 
         // initialize disclaimer
         $('#disclaimer').text(this.state.disclaimer);
@@ -255,10 +256,6 @@ const App = {
             const optionNode = `<option value="${interval}" ${selected} >${interval}</option>`;
             $intervalsSelect.append(optionNode);
         });
-    },
-
-    updateTruthAsOfCheckboxText() {
-        $("#asOfTruthDate").text(`As of ${this.uiState.selected_as_of_date}`);
     },
 
     //
@@ -480,7 +477,7 @@ const App = {
         if (as_of_index > 0) {
             appUIState.selected_as_of_date = appState.available_as_ofs[appUIState.selected_target_var][as_of_index - 1];  // write
             app.fetchDataUpdatePlot(true, false, true);
-            app.updateTruthAsOfCheckboxText();
+            updateTruthCheckboxText(false, this.uiState.selected_as_of_date);  // as_of
         }
     },
 
@@ -521,7 +518,7 @@ const App = {
         if (as_of_index < appState.available_as_ofs[appUIState.selected_target_var].length - 1) {
             appUIState.selected_as_of_date = appState.available_as_ofs[appUIState.selected_target_var][as_of_index + 1];  // write
             app.fetchDataUpdatePlot(true, false, true);
-            app.updateTruthAsOfCheckboxText();
+            updateTruthCheckboxText(false, this.uiState.selected_as_of_date);  // as_of
         }
     },
 

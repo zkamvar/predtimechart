@@ -210,7 +210,7 @@ function initializeDateRangePicker(app) {
         if (closestAsOf !== appUIState.selected_as_of_date) {
             appUIState.selected_as_of_date = closestAsOf;  // write
             app.fetchDataUpdatePlot(true, false, true);
-            app.updateTruthAsOfCheckboxText();
+            updateTruthCheckboxText(false, appUIState.selected_as_of_date);  // as_of
         }
     });
 }
@@ -309,6 +309,21 @@ function updateUEMActions(isEnable) {
 }
 
 
+/**
+ * Sets the text of either the current truth or the as_of truth checkbox.
+ *
+ * @param isCurrentTruth - true if current truth text should be updated, false if as_of truth should be updated
+ * @param date
+ */
+function updateTruthCheckboxText(isCurrentTruth, date) {
+    if (isCurrentTruth) {
+        $("#currentTruthDate").text(`Current (${date})`);
+    } else {
+        $("#asOfTruthDate").text(`As of ${date}`);
+    }
+}
+
+
 // export
 
 export {
@@ -317,5 +332,6 @@ export {
     initializeDateRangePicker,
     updateModelsList,
     showInfoModal,
-    updateUEMActions
+    updateUEMActions,
+    updateTruthCheckboxText
 };
