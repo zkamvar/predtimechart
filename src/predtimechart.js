@@ -9,7 +9,8 @@ import {
     initializeDateRangePicker,
     initializeUEMModals,
     showInfoModal,
-    updateModelsList
+    updateModelsList,
+    updateUEMActions
 } from "./ui.js";
 import _calcUemForecasts from './user-ensemble-model.js';
 import {_isInvalidUemName, download} from "./utils.js";
@@ -469,12 +470,7 @@ const App = {
         app.addUserEnsembleModel();
         updateModelsList(app, USER_ENSEMBLE_MODEL);
         app.updatePlot(true);
-
-        // todo xx these should be calls to an events.js function!:
-        $("#removeUserEnsemble").removeClass('disabled');    // enable
-        $("#downloadUserEnsemble").removeClass('disabled');  // ""
-        $("#infoUserEnsemble").removeClass('disabled');      // ""
-        $("#editNameUserEnsemble").addClass('disabled');     // disable
+        updateUEMActions(true);
     },
 
     decrementAsOf(app) {
@@ -577,12 +573,7 @@ const App = {
         app.removeUserEnsembleModel();
         updateModelsList(app, USER_ENSEMBLE_MODEL);
         app.updatePlot(true);
-
-        // todo xx these should be calls to an events.js function!:
-        $("#removeUserEnsemble").addClass('disabled');       // disable
-        $("#downloadUserEnsemble").addClass('disabled');     // ""
-        $("#infoUserEnsemble").addClass('disabled');         // ""
-        $("#editNameUserEnsemble").removeClass('disabled');  // enable
+        updateUEMActions(false);
     },
 
     shuffleColors(app) {

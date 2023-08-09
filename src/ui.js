@@ -289,6 +289,33 @@ function _updateUemErrorIcon(userEnsembleModel) {
 }
 
 
+/**
+ * Enables/disables user ensemble model action items based on isEnable.
+ *
+ * @param isEnable
+ */
+function updateUEMActions(isEnable) {
+    if (isEnable) {
+        $("#removeUserEnsemble").removeClass('disabled');    // enable
+        $("#downloadUserEnsemble").removeClass('disabled');  // ""
+        $("#infoUserEnsemble").removeClass('disabled');      // ""
+        $("#editNameUserEnsemble").addClass('disabled');     // disable
+    } else {
+        $("#removeUserEnsemble").addClass('disabled');       // disable
+        $("#downloadUserEnsemble").addClass('disabled');     // ""
+        $("#infoUserEnsemble").addClass('disabled');         // ""
+        $("#editNameUserEnsemble").removeClass('disabled');  // enable
+    }
+}
+
+
 // export
 
-export {initializeUEMModals, createDomElements, initializeDateRangePicker, updateModelsList, showInfoModal};
+export {
+    initializeUEMModals,
+    createDomElements,
+    initializeDateRangePicker,
+    updateModelsList,
+    showInfoModal,
+    updateUEMActions
+};
