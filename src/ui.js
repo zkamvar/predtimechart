@@ -324,14 +324,45 @@ function updateTruthCheckboxText(isCurrentTruth, date) {
 }
 
 
+/**
+ * Checks each item in #forecastViz_select_model that's in the passed list, unchecking all others.
+ *
+ * @param app
+ * @param modelsToCheck - array of model names to check
+ */
+function checkModels(app, modelsToCheck) {
+    app.state.models.forEach(function (model) {
+        const isShouldCheck = (modelsToCheck.indexOf(model) > -1);
+        const $modelCheckbox = $(`#${model}`);
+        $modelCheckbox.prop('checked', isShouldCheck);
+    });
+}
+
+
+/**
+ * @return - the plotly <DIV> element (NOT a JQuery object)
+ */
+function getPlotlyDiv() {
+    return document.getElementById('ploty_div');
+}
+
+
+function setDisclaimer(disclaimer) {
+    $('#disclaimer').text(disclaimer);
+}
+
+
 // export
 
 export {
-    initializeUEMModals,
+    checkModels,
     createDomElements,
+    getPlotlyDiv,
     initializeDateRangePicker,
-    updateModelsList,
+    initializeUEMModals,
+    setDisclaimer,
     showInfoModal,
-    updateUEMActions,
-    updateTruthCheckboxText
+    updateModelsList,
+    updateTruthCheckboxText,
+    updateUEMActions
 };

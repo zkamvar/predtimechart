@@ -5,13 +5,16 @@
 import {addEventHandlers} from "./events.js";
 import {getPlotlyData, getPlotlyLayout} from "./plot.js";
 import {
+    checkModels,
     createDomElements,
+    getPlotlyDiv,
     initializeDateRangePicker,
     initializeUEMModals,
+    setDisclaimer,
     showInfoModal,
     updateModelsList,
-    updateUEMActions,
-    updateTruthCheckboxText
+    updateTruthCheckboxText,
+    updateUEMActions
 } from "./ui.js";
 import _calcUemForecasts from './user-ensemble-model.js';
 import {download} from "./utils.js";
@@ -75,7 +78,6 @@ const App = {
         available_as_ofs: [],
         current_date: "",
         models: [],
-        disclaimer: "",
         initial_xaxis_range: null,  // optional initialize() options object key
 
         // Dynamic Data, used to create plots:
@@ -125,7 +127,6 @@ const App = {
         this.state.available_as_ofs = options['available_as_ofs'];
         this.state.current_date = options['current_date'];
         this.state.models = options['models'];
-        this.state.disclaimer = options['disclaimer'];
         this.state.initial_xaxis_range = options.hasOwnProperty('initial_xaxis_range') ? options['initial_xaxis_range'] : null;
 
         // save initial UI state (reflected in UI by `initializeUI()`)
@@ -172,7 +173,7 @@ const App = {
 
         console.log('initialize(): initializing UI');
         createDomElements(componentDiv, this.isUemEnabled, Object.keys(this.state.task_ids));
-        this.initializeUI();
+        this.initializeUI(options['disclaimer']);
 
         // wire up UI controls (event handlers)
         addEventHandlers(this, USER_ENSEMBLE_MODEL);
@@ -184,7 +185,7 @@ const App = {
         console.log('initialize(): done');
     },
 
-    initializeUI() {
+    initializeUI(disclaimer) {
         // populate options and models list (left column)
         this.initializeTargetVarsUI();
         this.initializeTaskIDsUI();
@@ -195,11 +196,10 @@ const App = {
         updateTruthCheckboxText(true, this.state.current_date);            // current
         updateTruthCheckboxText(false, this.uiState.selected_as_of_date);  // as_of
 
-        // initialize disclaimer
-        $('#disclaimer').text(this.state.disclaimer);
+        setDisclaimer(disclaimer)
 
         // initialize plotly (right column)
-        const plotyDiv = document.getElementById('ploty_div');
+        const plotlyDiv = getPlotlyDiv();
         const data = []  // data will be update by `updatePlot()`
         const layout = getPlotlyLayout(this);
         const calendarIcon = {  // https://fontawesome.com/icons/calendar-days?f=classic&s=solid
@@ -207,7 +207,7 @@ const App = {
             'height': 512,
             'path': "M128 0c17.7 0 32 14.3 32 32V64H288V32c0-17.7 14.3-32 32-32s32 14.3 32 32V64h48c26.5 0 48 21.5 48 48v48H0V112C0 85.5 21.5 64 48 64H96V32c0-17.7 14.3-32 32-32zM0 192H448V464c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48V192zm64 80v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V272c0-8.8-7.2-16-16-16H80c-8.8 0-16 7.2-16 16zm128 0v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V272c0-8.8-7.2-16-16-16H208c-8.8 0-16 7.2-16 16zm144-16c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V272c0-8.8-7.2-16-16-16H336zM64 400v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V400c0-8.8-7.2-16-16-16H80c-8.8 0-16 7.2-16 16zm144-16c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V400c0-8.8-7.2-16-16-16H208zm112 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V400c0-8.8-7.2-16-16-16H336c-8.8 0-16 7.2-16 16z"
         };
-        Plotly.newPlot(plotyDiv, data, layout, {
+        Plotly.newPlot(plotlyDiv, data, layout, {
             modeBarButtonsToRemove: ['lasso2d', 'autoScale2d'],
             modeBarButtonsToAdd: [{
                 name: 'Jump to As_Of',
@@ -269,15 +269,6 @@ const App = {
         });
     },
 
-    // Checks each item in #forecastViz_select_model that's in the passed list.
-    checkModels(models) {
-        this.state.models.forEach(function (model) {
-            const isShouldCheck = (models.indexOf(model) > -1);
-            const $modelCheckbox = $(`#${model}`);
-            $modelCheckbox.prop('checked', isShouldCheck);
-        });
-    },
-
     //
     // date fetch-related functions
     //
@@ -297,9 +288,10 @@ const App = {
                 promises.push(this.fetchCurrentTruth());
             }
             console.log(`fetchDataUpdatePlot(${isFetchFirst}, ${isFetchCurrentTruth}, ${isPreserveYLimit}): waiting on promises`);
-            const $plotyDiv = $('#ploty_div');
+            // const $plotlyDiv = $('#ploty_div');
+            const $plotlyDiv = $(getPlotlyDiv());
             if (this.isIndicateRedraw) {
-                $plotyDiv.fadeTo(0, 0.25);
+                $plotlyDiv.fadeTo(0, 0.25);
             }
             Promise.all(promises).then((values) => {
                 console.log(`fetchDataUpdatePlot(${isFetchFirst}, ${isFetchCurrentTruth}, ${isPreserveYLimit}): Promise.all() done. updating plot`, values);
@@ -319,7 +311,7 @@ const App = {
                 updateModelsList(this, USER_ENSEMBLE_MODEL);
                 this.updatePlot(isPreserveYLimit);
                 if (this.isIndicateRedraw) {
-                    $plotyDiv.fadeTo(0, 1.0);
+                    $plotlyDiv.fadeTo(0, 1.0);
                 }
             });
         } else {
@@ -426,7 +418,7 @@ const App = {
      * @param isPreserveYLimit true if should preserve any yaxis range limit currently set
      */
     updatePlot(isPreserveYLimit) {
-        const plotyDiv = document.getElementById('ploty_div');
+        const plotlyDiv = getPlotlyDiv();
         const data = getPlotlyData(this);
         let layout = getPlotlyLayout(this);
         if (data.length === 0) {
@@ -437,21 +429,21 @@ const App = {
         // the plot, and then re-laying it out. NB: the default xaxis.range seems to be [-1, 6] when updating for the
         // first time (yaxis = [-1, 4]), so we check for the range being those arrays to determine whether to preserve
         // or not
-        const currXAxisRange = plotyDiv.layout.xaxis.range;
-        const currYAxisRange = plotyDiv.layout.yaxis.range;
+        const currXAxisRange = plotlyDiv.layout.xaxis.range;
+        const currYAxisRange = plotlyDiv.layout.yaxis.range;
         const isXAxisRangeDefault = ((currXAxisRange.length === 2) && (currXAxisRange[0] === -1) && (currXAxisRange[1] === 6));
         const isYAxisRangeDefault = ((currYAxisRange.length === 2) && (currYAxisRange[0] === -1) && (currYAxisRange[1] === 4));
-        Plotly.react(plotyDiv, data, layout);
+        Plotly.react(plotlyDiv, data, layout);
         if (!isXAxisRangeDefault) {
-            Plotly.relayout(plotyDiv, 'xaxis.range', currXAxisRange);
+            Plotly.relayout(plotlyDiv, 'xaxis.range', currXAxisRange);
         }
         if (isPreserveYLimit && !isYAxisRangeDefault) {
-            Plotly.relayout(plotyDiv, 'yaxis.range', currYAxisRange);
+            Plotly.relayout(plotlyDiv, 'yaxis.range', currYAxisRange);
         }
 
         // optionally handle initial_xaxis_range
         if (isXAxisRangeDefault && (this.state.initial_xaxis_range != null)) {
-            Plotly.relayout(plotyDiv, 'xaxis.range', this.state.initial_xaxis_range);
+            Plotly.relayout(plotlyDiv, 'xaxis.range', this.state.initial_xaxis_range);
         }
         initializeDateRangePicker(this);  // b/c jquery binding is apparently lost with any Plotly.*() call
     },
@@ -594,11 +586,11 @@ const App = {
         const appUIState = app.uiState;
         if (isChecked) {
             appUIState.last_selected_models = appUIState.selected_models;  // write
-            appUIState.selected_models = app.selectableModels();            // write
+            appUIState.selected_models = app.selectableModels();           // write
         } else {
             appUIState.selected_models = appUIState.last_selected_models;  // write
         }
-        app.checkModels(appUIState.selected_models);
+        checkModels(app, appUIState.selected_models);
         app.updatePlot(true);
     },
 
