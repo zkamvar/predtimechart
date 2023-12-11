@@ -1153,13 +1153,13 @@ const App = {
                     }
 
                     const x = Object.keys(state.as_of_truth).length !== 0 ?
-                        state.as_of_truth.date.slice(-1).concat(model_forecasts.target_end_date) :
+                        model_forecasts.target_end_date :
                         model_forecasts.target_end_date;
                     const y1 = Object.keys(state.as_of_truth).length !== 0 ?
-                        state.as_of_truth.y.slice(-1).concat(model_forecasts[lower_quantile]) :  // lower edge
+                        model_forecasts[lower_quantile] :  // lower edge
                         model_forecasts[lower_quantile];
                     const y2 = Object.keys(state.as_of_truth).length !== 0 ?
-                        state.as_of_truth.y.slice(-1).concat(model_forecasts[upper_quantile]) :
+                        model_forecasts[upper_quantile] :
                         model_forecasts[upper_quantile];  // upper edge
                     return [
                         plot_line,
