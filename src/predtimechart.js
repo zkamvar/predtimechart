@@ -1092,15 +1092,9 @@ const App = {
                     }
 
                     const x = [];
-                    if (Object.keys(state.as_of_truth).length !== 0) {
-                        x.push(state.as_of_truth.date.slice(-1)[0]);
-                    }
                     x.push(model_forecasts.target_end_date.slice(0)[0]);
 
                     const y = [];
-                    if (Object.keys(state.as_of_truth).length !== 0) {
-                        y.push(state.as_of_truth.y.slice(-1)[0]);
-                    }
                     y.push(model_forecasts['q0.5'].slice(0)[0]);
 
                     return {
