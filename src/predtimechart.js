@@ -85,10 +85,10 @@ function _setSelectedTruths() {
     const isAsOfTruthChecked = $("#forecastViz_Truth_as_of").prop('checked');  // ""
     const selectedTruths = [];
     if (isCurrTruthChecked) {
-        selectedTruths.push('Current Truth');
+        selectedTruths.push('Current Target');
     }
     if (isAsOfTruthChecked) {
-        selectedTruths.push('Truth as of');
+        selectedTruths.push('Target as of');
     }
     this.state.selected_truth = selectedTruths;
     this.fetchDataUpdatePlot(false, null, true);
@@ -142,15 +142,15 @@ function _createUIElements($componentDiv, isUemEnabled, taskIdsKeys) {
     // add truth checkboxes
     const $truthCheckboxesDiv = $(
         '<div class="form-group form-check forecastViz_select_data ">\n' +
-        '    <input title="curr truth" type="checkbox" id="forecastViz_Current_Truth" value="Current Truth" checked>\n' +
-        '      &nbsp;<span id="currentTruthDate">Current (current truth date here)</span>\n' +
+        '    <input title="curr target" type="checkbox" id="forecastViz_Current_Truth" value="Current Target" checked>\n' +
+        '      &nbsp;<span id="currentTruthDate">Current (current target date here)</span>\n' +
         '      &nbsp;<span class="forecastViz_dot" style="background-color: lightgrey; "></span>\n' +
         '    <br>\n' +
-        '    <input title="truth as of" type="checkbox" id="forecastViz_Truth_as_of" value="Truth as of" checked>\n' +
+        '    <input title="target as of" type="checkbox" id="forecastViz_Truth_as_of" value="Target as of" checked>\n' +
         '      &nbsp;<span id="asOfTruthDate">(as of truth date here)</span>\n' +
         '      &nbsp;<span class="forecastViz_dot" style="background-color: black;"></span>\n' +
         '</div>');
-    $optionsDiv.append('<div class="pt-md-3">Select Truth Data:</div>');
+    $optionsDiv.append('<div class="pt-md-3">Select Target Data:</div>');
     $optionsDiv.append($truthCheckboxesDiv);
 
     // add model list controls
@@ -269,7 +269,7 @@ const App = {
         selected_target_var: '',
         selected_interval: '',
         selected_as_of_date: '',
-        selected_truth: ['Current Truth', 'Truth as of'],
+        selected_truth: ['Current Target', 'Target as of'],
         selected_models: [],
         last_selected_models: [],  // last manually-selected models. used by "Select Models" checkbox
         colors: [],
@@ -1028,24 +1028,24 @@ const App = {
     getPlotlyData() {
         const state = this.state;
         let pd = [];
-        if (state.selected_truth.includes('Current Truth') && Object.keys(state.current_truth).length !== 0) {
+        if (state.selected_truth.includes('Current Target') && Object.keys(state.current_truth).length !== 0) {
             pd.push({
                 x: state.current_truth.date,
                 y: state.current_truth.y,
                 type: 'scatter',
                 mode: 'lines',
-                name: 'Current Truth',
+                name: 'Current Target',
                 marker: {color: 'darkgray'}
             })
         }
-        if (state.selected_truth.includes('Truth as of') && Object.keys(state.as_of_truth).length !== 0) {
+        if (state.selected_truth.includes('Target as of') && Object.keys(state.as_of_truth).length !== 0) {
             pd.push({
                 x: state.as_of_truth.date,
                 y: state.as_of_truth.y,
                 type: 'scatter',
                 mode: 'lines',
                 opacity: 0.5,
-                name: `Truth as of ${state.selected_as_of_date}`,
+                name: `Target as of ${state.selected_as_of_date}`,
                 marker: {color: 'black'}
             })
         }
