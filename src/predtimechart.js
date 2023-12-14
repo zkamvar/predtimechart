@@ -797,8 +797,8 @@ const App = {
 
     // Returns an array of models that are not grayed out.
     selectableModels() {
-        return this.state.models.filter(function (element, index) {
-            return index < 100;
+        return this.state.models.filter(function (model) {
+            return App.state.forecasts.hasOwnProperty(model);
         });
     },
 
