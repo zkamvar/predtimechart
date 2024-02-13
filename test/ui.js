@@ -73,3 +73,30 @@ test('initialize() creates SELECTs', assert => {
         assert.true(selectEle !== null);
     });
 });
+
+
+//
+// selectedTaskIDs() tests
+//
+
+QUnit.module('selectedTaskIDs()');
+
+test('selectedTaskIDs() and selectedTaskIDValues() are correct', assert => {
+    // case: two tasks_ids
+    const optionsCopy = structuredClone(covid19ForecastsVizTestOptions);
+    optionsCopy['task_ids'] = {
+        "scenario_id": [{"value": "1", "text": "scenario 1"}, {"value": "2", "text": "scenario 2"}],
+        "location": [{"value": "48", "text": "Texas"}, {"value": "US", "text": "US"}]
+    };
+    optionsCopy['initial_task_ids'] = {"scenario_id": "1", "location": "48"};
+    App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
+
+    // test selectedTaskIDs()
+    assert.deepEqual(App.selectedTaskIDs(), {
+        "scenario_id": {"value": "1", "text": "scenario 1"},
+        "location": {"value": "48", "text": "Texas"}
+    });
+
+    // test selectedTaskIDValues()
+    assert.deepEqual(App.selectedTaskIDValues(), {"scenario_id": "1", "location": "48"});
+});

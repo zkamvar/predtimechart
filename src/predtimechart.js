@@ -811,15 +811,30 @@ const App = {
         });
     },
 
-    // returns the value(s) of the task ID <SELECT>(s) as an object similar to format of initial_task_ids, e.g.,
-    // {"scenario_id": 1, "location": "48"}
+    // Returns information about the task ID <SELECT>(s) as an object similar to format of `task_ids` except that each
+    // value is the selected object, rather than a list of all possible task IDs. Example return value:
+    // { "scenario_id": {"value": "2", "text": "scenario 2"},  "location": {"value": "48", "text": "Texas"} }
     selectedTaskIDs() {
         const theSelectedTaskIDs = {};  // return value. filled next
-        Object.keys(this.state.task_ids).forEach(function (taskIdKey) {
+        Object.keys(this.state.task_ids).forEach(taskIdKey => {
             const $taskIdSelect = $(`#${taskIdKey}`);  // created by _createUIElements()
-            theSelectedTaskIDs[taskIdKey] = $taskIdSelect.val();
+            const selectedTaskIdValue = $taskIdSelect.val();
+            const taskIdObj = App.state.task_ids[taskIdKey].find(taskID => taskID['value'] === selectedTaskIdValue);
+            theSelectedTaskIDs[taskIdKey] = taskIdObj;
         });
         return theSelectedTaskIDs;
+    },
+    /**
+     * A fetch*() helper that returns a processed version of selectedTaskIDs() in the format of `initial_task_ids`. for
+     * example, if selectedTaskIDs() = {"scenario_id": {"value": "1", "text": "scenario 1"}, "location": {"value": "48", "text": "Texas"}},
+     * then this function returns {"scenario_id": "1", "location": "48"} .
+     */
+    selectedTaskIDValues() {
+        const taskIdVals = {};
+        for (const [taskID, taskIDObj] of Object.entries(this.selectedTaskIDs())) {
+            taskIdVals[taskID] = taskIDObj['value'];
+        }
+        return taskIdVals;
     },
 
     //
@@ -874,7 +889,7 @@ const App = {
     fetchCurrentTruth() {
         this.state.current_truth = [];  // clear in case of error
         return this._fetchData(false,  // Promise
-            this.state.selected_target_var, this.selectedTaskIDs(), this.state.current_date)
+            this.state.selected_target_var, this.selectedTaskIDValues(), this.state.current_date)
             .then(response => response.json())
             .then((data) => {
                 this.state.current_truth = data;
@@ -884,7 +899,7 @@ const App = {
     fetchAsOfTruth() {
         this.state.as_of_truth = [];  // clear in case of error
         return this._fetchData(false,  // Promise
-            this.state.selected_target_var, this.selectedTaskIDs(), this.state.selected_as_of_date)
+            this.state.selected_target_var, this.selectedTaskIDValues(), this.state.selected_as_of_date)
             .then(response => response.json())
             .then((data) => {
                 this.state.as_of_truth = data;
@@ -894,7 +909,7 @@ const App = {
     fetchForecasts() {
         this.state.forecasts = {};  // clear in case of error
         return this._fetchData(true,  // Promise
-            this.state.selected_target_var, this.selectedTaskIDs(), this.state.selected_as_of_date)
+            this.state.selected_target_var, this.selectedTaskIDValues(), this.state.selected_as_of_date)
             .then(response => response.json())  // Promise
             .then((data) => {
                 this.state.forecasts = data;
@@ -1004,12 +1019,12 @@ const App = {
         }
 
         const variable = this.state.target_variables.filter((obj) => obj.value === this.state.selected_target_var)[0].plot_text;
-        const taskIdVals = Object.values(this.selectedTaskIDs());  // e.g., {"scenario_id": 1, "location": "48"} -> [1, "48]
+        const taskIdTexts = Object.values(this.selectedTaskIDs()).map(taskID => taskID['text']);
         return {
             autosize: true,
             showlegend: false,
             title: {
-                text: `Forecasts of ${variable} <br> in ${taskIdVals} as of ${this.state.selected_as_of_date}`,
+                text: `Forecasts of ${variable} <br> in ${taskIdTexts.join(', ')} as of ${this.state.selected_as_of_date}`,
                 x: 0.5,
                 y: 0.90,
                 xanchor: 'center',
