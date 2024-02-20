@@ -287,7 +287,10 @@ const App = {
     //
 
     /**
-     * Initialize this app using the passed args.
+     * Initialize this app using the passed args. Note that we support specifying some aspects of UI selection state via
+     * these URL parameters: `as_of`, `interval`, `target_var`, `model` (one or more), and task_ids (one or more). For
+     * example, this URL specifies the first three along with two models and two task_ids:
+     *   http://.../?as_of=2022-01-29&model=COVIDhub-baseline&model=COVIDhub-ensemble&interval=95%25&target_var=week_ahead_incident_deaths&scenario_id=1&location=48
      *
      * @param {String} componentDiv - id of a DOM node to populate. it must be an empty Bootstrap 4 row
      * @param {Function} _fetchData - function as documented in README.md .
@@ -312,7 +315,13 @@ const App = {
             throw `componentDiv DOM node not found: '${componentDiv}'`;
         }
 
-        // validate options object
+        // validate options object, first merging into it so we can validate any URL params passed in. note that we
+        // explicitly handle the case of options being null b/c we have to run before `_validateOptions()`, which
+        // checks for that case
+        if ((options !== null) && (typeof options === 'object')) {
+            const optionsFromURL = this.getOptionsFromURL(options['task_ids']);
+            options = {...options, ...optionsFromURL}  // NB: second overrides first
+        }
         _validateOptions(options);
 
         // save static vars
@@ -372,7 +381,7 @@ const App = {
         console.log('initialize(): initializing UI');
         const $componentDiv = $(componentDivEle);
         _createUIElements($componentDiv, this.isUemEnabled, Object.keys(this.state.task_ids));
-        this.initializeUI(options);
+        this.initializeUI(options['initial_task_ids']);
 
         // wire up UI controls (event handlers)
         this.addEventHandlers();
@@ -383,10 +392,62 @@ const App = {
 
         console.log('initialize(): done');
     },
-    initializeUI(options) {
+    /**
+     * initialize() helper that returns an object like that function's `options` object, but filled with values from the
+     * current window location. Does not check for missing parameters.
+     *
+     * @param {Object} task_ids - as passed to initialize()'s options['task_ids']
+     * @returns {Object}
+     */
+    getOptionsFromURL(task_ids) {
+        const options = {};
+        const searchParams = new URLSearchParams(window.location.search)
+        if (searchParams.get('as_of')) {
+            options['initial_as_of'] = searchParams.get('as_of');
+        }
+        if (searchParams.get('interval')) {
+            options['initial_interval'] = searchParams.get('interval');
+        }
+        if (searchParams.get('target_var')) {
+            options['initial_target_var'] = searchParams.get('target_var');
+        }
+
+        if (searchParams.get('model')) {  // at least one
+            options['initial_checked_models'] = searchParams.getAll('model');
+        }
+
+        const initial_task_ids = {}; // NB: these are values, not text
+        Object.keys(task_ids).forEach(function (taskIdKey) {
+            if (searchParams.get(taskIdKey)) {
+                initial_task_ids[taskIdKey] = searchParams.get(taskIdKey);
+            }
+        });
+        if (Object.keys(initial_task_ids).length !== 0) {
+            options['initial_task_ids'] = initial_task_ids;
+        }
+
+        return options;
+    },
+    showOptionsInURL() {
+        const newUrl = new URL(window.location.origin + window.location.pathname);
+        newUrl.searchParams.append("as_of", this.state.selected_as_of_date);
+        newUrl.searchParams.append("interval", this.state.selected_interval);
+        newUrl.searchParams.append("target_var", this.state.selected_target_var);
+
+        this.state.selected_models.forEach(model => {
+            newUrl.searchParams.append("model", model);
+        });
+
+        for (const [taskID, taskValue] of Object.entries(this.selectedTaskIDValues())) {
+            newUrl.searchParams.append(taskID, taskValue);
+        }
+
+        window.history.replaceState(null, '', newUrl);
+    },
+    initializeUI(initial_task_ids) {
         // populate options and models list (left column)
         this.initializeTargetVarsUI();
-        this.initializeTaskIDsUI(options['initial_task_ids']);
+        this.initializeTaskIDsUI(initial_task_ids);
         this.initializeIntervalsUI();
         this.updateModelsList();
 
@@ -569,6 +630,7 @@ const App = {
         $('#target_variable').on('change', function () {
             App.state.selected_target_var = this.value;
             App.fetchDataUpdatePlot(true, true, false);
+            App.showOptionsInURL();
         });
         Object.keys(this.state.task_ids).forEach(function (taskIdKey) {
             const $taskIdSelect = $(`#${taskIdKey}`);  // created by _createUIElements()
@@ -579,6 +641,7 @@ const App = {
         $('#intervals').on('change', function () {
             App.state.selected_interval = this.value;
             App.fetchDataUpdatePlot(false, null, true);
+            App.showOptionsInURL();
         });
 
         // truth checkboxes
@@ -729,6 +792,7 @@ const App = {
             }
             App.checkModels(App.state.selected_models);
             App.updatePlot(true);
+            App.showOptionsInURL();
         });
 
         // wire up model checkboxes
@@ -765,6 +829,7 @@ const App = {
                 });  // App.state.selected_models.remove(model);
             }
             App.fetchDataUpdatePlot(false, null, true);
+            App.showOptionsInURL();
         });
     },
 
@@ -780,6 +845,7 @@ const App = {
             state.selected_as_of_date = state.available_as_ofs[state.selected_target_var][as_of_index + 1];
             this.fetchDataUpdatePlot(true, false, true);
             this.updateTruthAsOfCheckboxText();
+            this.showOptionsInURL();
         }
     },
     decrementAsOf() {
@@ -789,6 +855,7 @@ const App = {
             state.selected_as_of_date = state.available_as_ofs[state.selected_target_var][as_of_index - 1];
             this.fetchDataUpdatePlot(true, false, true);
             this.updateTruthAsOfCheckboxText();
+            this.showOptionsInURL();
         }
     },
     updateTruthAsOfCheckboxText() {

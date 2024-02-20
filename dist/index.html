@@ -2,7 +2,8 @@
 
     const covid19ForecastsVizTestOptions = {
         "available_as_ofs": {
-            "week_ahead_incident_deaths": ["2022-01-22", "2022-01-29"]
+            "week_ahead_incident_deaths": ["2022-01-22", "2022-01-29"],
+            "day_ahead_incident_hospitalizations": ["2022-01-22", "2022-01-29"]
         },
         "current_date": "2022-01-29",
         "disclaimer": "Most forecasts have failed to reliably predict rapid changes in the trends of reported cases and hospitalizations. Due to this limitation, they should not be relied upon for decisions about the possibility or timing of rapid changes in trends.",
@@ -14,11 +15,17 @@
         "initial_xaxis_range": null,
         "intervals": ["0%", "50%", "95%"],
         "models": ["COVIDhub-ensemble", "COVIDhub-baseline", "Empty-model"],
-        "target_variables": [{
-            "value": "week_ahead_incident_deaths",
-            "text": "week ahead incident deaths",
-            "plot_text": "week ahead incident deaths"
-        }],
+        "target_variables": [
+            {
+                "value": "week_ahead_incident_deaths",
+                "text": "week ahead incident deaths",
+                "plot_text": "week ahead incident deaths"
+            },
+            {
+                "value": "day_ahead_incident_hospitalizations",
+                "text": "day ahead incident hospitalizations",
+                "plot_text": "day ahead incident hospitalizations"
+            }],
         "task_ids": {
             "scenario_id": [{"value": "1", "text": "scenario 1"}, {"value": "2", "text": "scenario 2"}],
             "location": [{"value": "48", "text": "Texas"}, {"value": "US", "text": "US"}]
