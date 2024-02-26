@@ -20,13 +20,15 @@ global.$ = jQueryFactory(jsdomWindow);
 
 const PlotlyStub = {
     numCalls: 0,  // mock-style counter for below functions
-    newPlot(...args) {
+    newPlot(graphDiv, data, layout, config) {
+        this.numCalls++;
+        graphDiv.on = function (eventName, callbackFunction) {  // called by `App.initializeUI()` for 'plotly_relayout's
+        };
+    },
+    react(graphDiv, data, layout, config) {
         this.numCalls++;
     },
-    react() {
-        this.numCalls++;
-    },
-    relayout() {
+    relayout(graphDiv, update) {
         this.numCalls++;
     },
 }

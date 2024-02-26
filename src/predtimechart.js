@@ -411,9 +411,11 @@ const App = {
         if (searchParams.get('target_var')) {
             options['initial_target_var'] = searchParams.get('target_var');
         }
-
         if (searchParams.get('model')) {  // at least one
             options['initial_checked_models'] = searchParams.getAll('model');
+        }
+        if (searchParams.get('xaxis_range')) {
+            options['initial_xaxis_range'] = searchParams.getAll('xaxis_range');
         }
 
         const initial_task_ids = {}; // NB: these are values, not text
@@ -434,6 +436,12 @@ const App = {
         newUrl.searchParams.append("interval", this.state.selected_interval);
         newUrl.searchParams.append("target_var", this.state.selected_target_var);
 
+        const plotyDiv = document.getElementById('ploty_div');
+        plotyDiv.layout.xaxis.range.forEach(dateTimeStr => {  // ex: "2022-02-03 18:17:12.8268" or "2022-02-03"
+            const date = dateTimeStr.slice(0, 10);
+            newUrl.searchParams.append("xaxis_range", date);
+        });
+
         this.state.selected_models.forEach(model => {
             newUrl.searchParams.append("model", model);
         });
@@ -442,7 +450,11 @@ const App = {
             newUrl.searchParams.append(taskID, taskValue);
         }
 
-        window.history.replaceState(null, '', newUrl);
+        // following is to prevent browser history errors resulting from calling `replaceState()` too many times, e.g.,
+        // in Firefox: "Too many calls to Location or History APIs within a short timeframe."
+        if ((window.history.state === null) || (newUrl.toString() !== window.history.state.toString())) {
+            window.history.replaceState(newUrl.toString(), '', newUrl);
+        }
     },
     initializeUI(initial_task_ids) {
         // populate options and models list (left column)
@@ -475,6 +487,16 @@ const App = {
                 click: () => null,  // click (required here) is handled by daterangepicker below
             }]
         });
+
+        // add an event listener (must be defined after above `newPlot()` call) to handle range slider changes by
+        // updating the URL's two `initial_xaxis_range` params. NB: this event fires on every drag instead of on,
+        // mouseups, causing a lot of activity: Range slider emits relayout evt on mousemove, should be only on mouseup:
+        // https://github.com/plotly/plotly.js/issues/2216
+        plotyDiv.on('plotly_relayout', function () {
+            var currXAxisRange = plotyDiv.layout.xaxis.range;
+            App.showOptionsInURL();
+        });
+
         this.initializeDateRangePicker();  // b/c jquery binding is apparently lost with any Plotly.*() call
     },
     initializeDateRangePicker() {
@@ -492,7 +514,6 @@ const App = {
             const pickedDate = picker.startDate.format('YYYY-MM-DD');
             const availableAsOfs = App.state.available_as_ofs[App.state.selected_target_var];
             const closestAsOf = closestYear(pickedDate, availableAsOfs);
-            console.debug(`apply.daterangepicker: pickedDate=${pickedDate}, closestAsOf=${closestAsOf}, selected_as_of_date=${App.state.selected_as_of_date}, diff=${closestAsOf !== App.state.selected_as_of_date}`);
 
             // reset picked date to today (o/w stays on picked date)
             picker.setStartDate(new Date());
@@ -662,7 +683,6 @@ const App = {
         // User Ensemble Model Actions dropdown button. NB: these will not be created by initialize() if !isUemEnabled,
         // but JQuery will not error if they don't exist :-)
         $("#addUserEnsemble").click(function (event) {
-            console.debug("addUserEnsemble click", App.state.selected_models);
             event.preventDefault();
             App.removeUserEnsembleModel();
             App.addUserEnsembleModel();
@@ -684,7 +704,6 @@ const App = {
             $("#editNameUserEnsemble").removeClass('disabled');  // enable
         });
         $("#downloadUserEnsemble").click(function (event) {
-            console.debug("#downloadUserEnsemble click", USER_ENSEMBLE_MODEL.models, App.state.selected_target_var, App.state.selected_as_of_date);
             event.preventDefault();
             let fileName = '';
             App._calcUemForecasts(USER_ENSEMBLE_MODEL.models, App.state.selected_target_var, App.state.selected_as_of_date, USER_ENSEMBLE_MODEL.name)  // Promise
@@ -702,9 +721,7 @@ const App = {
                     return response.text();
                 })
                 .then((text) => {
-                    console.debug("#downloadUserEnsemble click: data", typeof (text), fileName);
                     download(text, 'text/csv', fileName);
-                    console.debug("#downloadUserEnsemble click: download() done");
 
                     // configure and show the info modal
                     $('#uemInfoModalTitle').html('CSV File Downloaded');
