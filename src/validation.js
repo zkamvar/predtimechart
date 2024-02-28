@@ -25,7 +25,7 @@ const eqSet = (xs, ys) =>
 function _validateOptions(options) {
     // options object: must be present
     if ((options === null) || (typeof options !== "object")) {
-        throw `options object is required but missing: '${options}'`;
+        throw `options object is required but missing`;
     }
 
     // validate structure based on JSON Schema using Ajv-compiled validation function

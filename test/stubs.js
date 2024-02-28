@@ -35,6 +35,11 @@ const PlotlyStub = {
 global.Plotly = PlotlyStub;
 
 
-const $icon = $("[data-title='Jump to As_Of']");
+// patch for `initializeDateRangePicker()`
 $.fn.daterangepicker = function (...args) {
+};
+
+
+// patch for `showDialog()`
+$.fn.modal = function (...args) {
 };

@@ -62,12 +62,8 @@ test('componentDiv not found', assert => {
 
 
 test('options object missing', assert => {
-    assert.throws(
-        function () {
-            App.initialize('qunit-fixture', null, true, null, null);
-        },
-        /options object is required but missing/,
-    );
+    const actValue = App.initialize('qunit-fixture', null, true, null, null);
+    assert.equal(actValue, `options object is required but missing`);
 });
 
 
@@ -83,12 +79,10 @@ QUnit.module('initialize() options object other structural validation');
 test('available_as_ofs at least one key', assert => {
     const optionsCopy = structuredClone(covid19ForecastsVizTestOptions);
     optionsCopy['available_as_ofs'] = {};
-    assert.throws(
-        function () {
-            App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
-        },
-        /invalid options structure.*available_as_ofs.*"must NOT have fewer than 1 properties/,
-    );
+
+    const regExp = /invalid options structure.*available_as_ofs.*"must NOT have fewer than 1 properties/;
+    const actValue = App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
+    assert.true(regExp.test(actValue));
 });
 
 
@@ -97,78 +91,63 @@ QUnit.module('initialize() options object semantics validation');
 test('available_as_ofs keys in target_variables value', assert => {
     const optionsCopy = structuredClone(covid19ForecastsVizTestOptions);
     optionsCopy['available_as_ofs'] = {"bad key": ["2021-01-01"]};
-    assert.throws(
-        function () {
-            App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
-        },
-        /available_as_ofs key not in target_variables value/,
-    );
+
+    const regExp = /available_as_ofs key not in target_variables value/;
+    const actValue = App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
+    assert.true(regExp.test(actValue));
 });
 
 
 test('initial_as_of in available_as_ofs array', assert => {
     const optionsCopy = structuredClone(covid19ForecastsVizTestOptions);
     optionsCopy['initial_as_of'] = "2021-01-01";
-    assert.throws(
-        function () {
-            App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
-        },
-        /initial_as_of not in available_as_ofs/,
-    );
+
+    const regExp = /initial_as_of not in available_as_ofs/;
+    const actValue = App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
+    assert.true(regExp.test(actValue));
 });
 
 
 test('initial_checked_models in models', assert => {
     const optionsCopy = structuredClone(covid19ForecastsVizTestOptions);
     optionsCopy['initial_checked_models'] = [null];
-    assert.throws(
-        function () {
-            App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
-        },
-        /initial_checked_models model not in models/,
-    );
+
+    const regExp = /initial_checked_models model not in models/;
+    const actValue = App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
+    assert.true(regExp.test(actValue));
 });
 
 
 test('initial_interval in intervals', assert => {
     const optionsCopy = structuredClone(covid19ForecastsVizTestOptions);
     optionsCopy['initial_interval'] = "not in intervals";
-    assert.throws(
-        function () {
-            App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
-        },
-        /initial_interval not in intervals/,
-    );
+
+    const regExp = /initial_interval not in intervals/;
+    const actValue = App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
+    assert.true(regExp.test(actValue));
 });
 
 
 test('initial_target_var in target_variables values', assert => {
     const optionsCopy = structuredClone(covid19ForecastsVizTestOptions);
     optionsCopy['initial_target_var'] = "not in target_variables";
-    assert.throws(
-        function () {
-            App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
-        },
-        /initial_target_var not in target_variables/,
-    );
+
+    const regExp = /initial_target_var not in target_variables/;
+    const actValue = App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
+    assert.true(regExp.test(actValue));
 });
 
 
 test('initial_task_ids in task_ids value', assert => {
     const optionsCopy = structuredClone(covid19ForecastsVizTestOptions);
     optionsCopy['initial_task_ids'] = {"key not in task_ids": null};
-    assert.throws(
-        function () {
-            App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
-        },
-        /initial_task_ids key !== task_ids/,
-    );
+
+    var regExp = /initial_task_ids key !== task_ids/;
+    var actValue = App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
+    assert.true(regExp.test(actValue));
 
     optionsCopy['initial_task_ids'] = {"unit": "value not in task_ids"};
-    assert.throws(
-        function () {
-            App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
-        },
-        /initial_task_ids value not in task_ids/,
-    );
+    regExp = /initial_task_ids value not in task_ids/;
+    actValue = App.initialize('qunit-fixture', _fetchData, true, optionsCopy, null);
+    assert.true(regExp.test(actValue));
 });

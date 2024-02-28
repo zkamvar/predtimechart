@@ -232,6 +232,35 @@ function download(content, mimeType, filename) {
 }
 
 
+/**
+ * Shows a modal dialog with a close button.
+ *
+ * @param {String} - title
+ * @param {String} - message
+ */
+function showDialog(title, message) {
+    console.log(`flashMessage(): ${message}`);
+    const modal$ = $(`
+        <div class="modal fade" id="showDialogModal" tabindex="-1" role="dialog" aria-labelledby="showDialogModalLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="showDialogModalLabel">${title}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">${message}</div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>`);
+    modal$.modal('show');
+}
+
+
 //
 // App
 //
@@ -302,6 +331,7 @@ const App = {
      * @param {Function} _calcUemForecasts - optional human judgement ensemble model function as documented in forecast-repository/forecast_app/templates/project_viz.html .
      *   args: componentModels, targetKey, referenceDate, userModelName. NB: pass null for the function to disable the
      *   feature.
+     * @returns {String} - error message String or null if no error
      */
     initialize(componentDiv, _fetchData, isIndicateRedraw, options, _calcUemForecasts) {
         this._fetchData = _fetchData;
@@ -316,14 +346,31 @@ const App = {
             throw `componentDiv DOM node not found: '${componentDiv}'`;
         }
 
-        // validate options object, first merging into it so we can validate any URL params passed in. note that we
-        // explicitly handle the case of options being null b/c we have to run before `_validateOptions()`, which
-        // checks for that case
-        if ((options !== null) && (typeof options === 'object')) {
-            const optionsFromURL = this.getOptionsFromURL(options['task_ids']);
-            options = {...options, ...optionsFromURL}  // NB: second overrides first
+        // validate options object
+        try {
+            _validateOptions(options);
+            console.debug('initialize(): passed options are valid');
+        } catch (error) {
+            console.error(`invalid option(s): ${error}`);
+            showDialog('Init failed due to invalid option(s)', error);
+            return error;  // leave display default/blank
         }
-        _validateOptions(options);
+
+        // validate options object merged with URL params, if present
+        let isShowOptionsInURL = false;
+        const optionsFromURL = this.getOptionsFromURL(options['task_ids']);
+        if (Object.keys(optionsFromURL).length !== 0) {
+            const mergedOptions = {...options, ...optionsFromURL}  // NB: second overrides first
+            try {
+                _validateOptions(mergedOptions);
+                console.debug('initialize(): merged options are valid');
+                options = mergedOptions;
+            } catch (error) {
+                console.error(`invalid URL option(s): ${error}`);
+                showDialog('Ignoring invalid URL parameter(s)', error);
+                isShowOptionsInURL = true;
+            }
+        }
 
         // save static vars
         this.state.target_variables = options['target_variables'];
@@ -392,7 +439,13 @@ const App = {
         console.debug('initialize(): fetching data and updating plot');
         this.fetchDataUpdatePlot(true, true);
 
+        // show corrected url if params were invalid
+        if (isShowOptionsInURL) {
+            this.showOptionsInURL();
+        }
+
         console.debug('initialize(): done');
+        return null;  // no error
     },
     /**
      * initialize() helper that returns an object like that function's `options` object, but filled with values from the
@@ -442,13 +495,21 @@ const App = {
         newUrl.searchParams.append("target_var", this.state.selected_target_var);
 
         const plotyDiv = document.getElementById('ploty_div');
-        plotyDiv.layout.xaxis.range.forEach(xRangeDateTimeStr => {  // ex: "2022-02-03 18:17:12.8268" or "2022-02-03"
-            const xRangeDate = xRangeDateTimeStr.slice(0, 10);
-            newUrl.searchParams.append("xaxis_range", xRangeDate);
-        });
-        plotyDiv.layout.yaxis.range.forEach(yRangeValue => {
-            newUrl.searchParams.append("yaxis_range", yRangeValue);
-        });
+        const currXAxisRange = plotyDiv.layout.xaxis.range;
+        const currYAxisRange = plotyDiv.layout.yaxis.range;
+        const isXAxisRangeDefault = ((currXAxisRange.length === 2) && (currXAxisRange[0] === -1) && (currXAxisRange[1] === 6));
+        const isYAxisRangeDefault = ((currYAxisRange.length === 2) && (currYAxisRange[0] === -1) && (currYAxisRange[1] === 4));
+        if (!isXAxisRangeDefault) {
+            plotyDiv.layout.xaxis.range.forEach(xRangeDateTimeStr => {  // ex: "2022-02-03 18:17:12.8268" or "2022-02-03"
+                const xRangeDate = xRangeDateTimeStr.slice(0, 10);
+                newUrl.searchParams.append("xaxis_range", xRangeDate);
+            });
+        }
+        if (!isYAxisRangeDefault) {
+            plotyDiv.layout.yaxis.range.forEach(yRangeValue => {
+                newUrl.searchParams.append("yaxis_range", yRangeValue);
+            });
+        }
 
         this.state.selected_models.forEach(model => {
             newUrl.searchParams.append("model", model);
