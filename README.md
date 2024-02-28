@@ -107,7 +107,8 @@ The component is initialized by a JavaScript object with the following keys and 
 - `initial_interval`: `intervals` value to use for the initial plot
 - `initial_target_var`: `target_variables` `value` key to use for the initial plot
 - `initial_task_ids`:  an `object` to use for the initial plot. Its format is identical to `_fetchData()`'s `taskIDs` arg above.
-- `initial_xaxis_range`: optional `array` of two dates in 'YYYY-MM-DD' format that specify the initial xaxis range to use. To not initialize the range, either don't pass this key or pass `null` for its value
+- `initial_xaxis_range`: `array` of two dates in 'YYYY-MM-DD' format that specify the initial xaxis range to use. To not initialize the range, pass `null` for its value
+- `initial_yaxis_range`: `array` of two values (format depends on outcome variable) that specify the initial yaxis range to use. To not initialize the range, pass `null` for its value
 - `intervals`: `array` of one or more integers between 0 and 100 inclusive, representing percentages (purpose: TBD)
 - `models`: `array` of model names (`string`s) that provide data
 - `target_variables`: `array` of `object`s defining the target variables in the data. Each object contains three keys:
@@ -149,6 +150,7 @@ Here's a real-world example from the [COVID-19 Forecast Hub](https://covid19fore
   "initial_target_var": "week_ahead_incident_deaths",
   "initial_task_ids": {"unit": "48"},
   "initial_xaxis_range": null,
+  "initial_yaxis_range": null,
   "intervals": ["0%", "50%", "95%"],
   "models": [
     "COVIDhub-baseline",

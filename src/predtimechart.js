@@ -91,7 +91,7 @@ function _setSelectedTruths() {
         selectedTruths.push('Target as of');
     }
     this.state.selected_truth = selectedTruths;
-    this.fetchDataUpdatePlot(false, null, true);
+    this.fetchDataUpdatePlot(false, false);
 }
 
 
@@ -154,7 +154,7 @@ function _createUIElements($componentDiv, isUemEnabled, taskIdsKeys) {
     $optionsDiv.append($truthCheckboxesDiv);
 
     // add model list controls
-    var optionsDivActionsDropdown;
+    let optionsDivActionsDropdown;
     if (isUemEnabled) {
         optionsDivActionsDropdown = '<div class="dropdown">\n' +
             '  <button class="btn btn-sm dropdown-toggle" type="button" id="dropdownMenuButton" style="float: right;" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">\n' +
@@ -273,7 +273,8 @@ const App = {
         selected_models: [],
         last_selected_models: [],  // last manually-selected models. used by "Select Models" checkbox
         colors: [],
-        initial_xaxis_range: null,  // optional initialize() options object key
+        initial_xaxis_range: null,  // initialize() option
+        initial_yaxis_range: null,  // ""
 
         // 2/2 Data used to create plots:
         current_truth: [],
@@ -345,6 +346,7 @@ const App = {
             '#f0f921'
         ]).flat()
         this.state.initial_xaxis_range = options.hasOwnProperty('initial_xaxis_range') ? options['initial_xaxis_range'] : null;
+        this.state.initial_yaxis_range = options.hasOwnProperty('initial_yaxis_range') ? options['initial_yaxis_range'] : null;
 
         // save initial selected state
         this.state.selected_target_var = options['initial_target_var'];
@@ -378,7 +380,7 @@ const App = {
             }
         }
 
-        console.log('initialize(): initializing UI');
+        console.debug('initialize(): initializing UI');
         const $componentDiv = $(componentDivEle);
         _createUIElements($componentDiv, this.isUemEnabled, Object.keys(this.state.task_ids));
         this.initializeUI(options['initial_task_ids']);
@@ -387,10 +389,10 @@ const App = {
         this.addEventHandlers();
 
         // pull initial data (current truth, selected truth, and selected forecast) and update the plot
-        console.log('initialize(): fetching data and updating plot');
-        this.fetchDataUpdatePlot(true, true, false);
+        console.debug('initialize(): fetching data and updating plot');
+        this.fetchDataUpdatePlot(true, true);
 
-        console.log('initialize(): done');
+        console.debug('initialize(): done');
     },
     /**
      * initialize() helper that returns an object like that function's `options` object, but filled with values from the
@@ -417,6 +419,9 @@ const App = {
         if (searchParams.get('xaxis_range')) {
             options['initial_xaxis_range'] = searchParams.getAll('xaxis_range');
         }
+        if (searchParams.get('yaxis_range')) {
+            options['initial_yaxis_range'] = searchParams.getAll('yaxis_range');
+        }
 
         const initial_task_ids = {}; // NB: these are values, not text
         Object.keys(task_ids).forEach(function (taskIdKey) {
@@ -437,9 +442,12 @@ const App = {
         newUrl.searchParams.append("target_var", this.state.selected_target_var);
 
         const plotyDiv = document.getElementById('ploty_div');
-        plotyDiv.layout.xaxis.range.forEach(dateTimeStr => {  // ex: "2022-02-03 18:17:12.8268" or "2022-02-03"
-            const date = dateTimeStr.slice(0, 10);
-            newUrl.searchParams.append("xaxis_range", date);
+        plotyDiv.layout.xaxis.range.forEach(xRangeDateTimeStr => {  // ex: "2022-02-03 18:17:12.8268" or "2022-02-03"
+            const xRangeDate = xRangeDateTimeStr.slice(0, 10);
+            newUrl.searchParams.append("xaxis_range", xRangeDate);
+        });
+        plotyDiv.layout.yaxis.range.forEach(yRangeValue => {
+            newUrl.searchParams.append("yaxis_range", yRangeValue);
         });
 
         this.state.selected_models.forEach(model => {
@@ -488,12 +496,11 @@ const App = {
             }]
         });
 
-        // add an event listener (must be defined after above `newPlot()` call) to handle range slider changes by
-        // updating the URL's two `initial_xaxis_range` params. NB: this event fires on every drag instead of on,
-        // mouseups, causing a lot of activity: Range slider emits relayout evt on mousemove, should be only on mouseup:
-        // https://github.com/plotly/plotly.js/issues/2216
+        // add an event listener (must be defined after above `newPlot()` call) to handle plot changes by updating the
+        // URL's two `initial_xaxis_range` and `initial_yaxis_range` params. NB: this event fires on every drag instead
+        // of on, mouseups, causing a lot of activity: Range slider emits relayout evt on mousemove, should be only on
+        // mouseup: https://github.com/plotly/plotly.js/issues/2216
         plotyDiv.on('plotly_relayout', function () {
-            var currXAxisRange = plotyDiv.layout.xaxis.range;
             App.showOptionsInURL();
         });
 
@@ -522,7 +529,7 @@ const App = {
             // go to picked date if different from current
             if (closestAsOf !== App.state.selected_as_of_date) {
                 App.state.selected_as_of_date = closestAsOf;
-                App.fetchDataUpdatePlot(true, false, true);
+                App.fetchDataUpdatePlot(true, false);
                 App.updateTruthAsOfCheckboxText();
             }
         });
@@ -650,18 +657,18 @@ const App = {
         // option, task ID, and interval selects
         $('#target_variable').on('change', function () {
             App.state.selected_target_var = this.value;
-            App.fetchDataUpdatePlot(true, true, false);
+            App.fetchDataUpdatePlot(true, true);
             App.showOptionsInURL();
         });
         Object.keys(this.state.task_ids).forEach(function (taskIdKey) {
             const $taskIdSelect = $(`#${taskIdKey}`);  // created by _createUIElements()
             $taskIdSelect.on('change', function () {
-                App.fetchDataUpdatePlot(true, true, false);
+                App.fetchDataUpdatePlot(true, true);
             });
         });
         $('#intervals').on('change', function () {
             App.state.selected_interval = this.value;
-            App.fetchDataUpdatePlot(false, null, true);
+            App.fetchDataUpdatePlot(false, false);
             App.showOptionsInURL();
         });
 
@@ -845,7 +852,7 @@ const App = {
                     return value !== model;
                 });  // App.state.selected_models.remove(model);
             }
-            App.fetchDataUpdatePlot(false, null, true);
+            App.fetchDataUpdatePlot(false, false);
             App.showOptionsInURL();
         });
     },
@@ -860,7 +867,7 @@ const App = {
         const as_of_index = state.available_as_ofs[state.selected_target_var].indexOf(state.selected_as_of_date);
         if (as_of_index < state.available_as_ofs[state.selected_target_var].length - 1) {
             state.selected_as_of_date = state.available_as_ofs[state.selected_target_var][as_of_index + 1];
-            this.fetchDataUpdatePlot(true, false, true);
+            this.fetchDataUpdatePlot(true, false);
             this.updateTruthAsOfCheckboxText();
             this.showOptionsInURL();
         }
@@ -870,7 +877,7 @@ const App = {
         const as_of_index = state.available_as_ofs[state.selected_target_var].indexOf(state.selected_as_of_date);
         if (as_of_index > 0) {
             state.selected_as_of_date = state.available_as_ofs[state.selected_target_var][as_of_index - 1];
-            this.fetchDataUpdatePlot(true, false, true);
+            this.fetchDataUpdatePlot(true, false);
             this.updateTruthAsOfCheckboxText();
             this.showOptionsInURL();
         }
@@ -931,43 +938,43 @@ const App = {
      * @param isFetchFirst true if should fetch before plotting. false if no fetch
      * @param isFetchCurrentTruth applies if isFetchFirst: controls whether current truth is fetched in addition to
      *   as_of truth and forecasts. ignored if not isFetchFirst
-     * @param isPreserveYLimit passed to updatePlot() - see
      */
-    fetchDataUpdatePlot(isFetchFirst, isFetchCurrentTruth, isPreserveYLimit) {
+    fetchDataUpdatePlot(isFetchFirst, isFetchCurrentTruth) {
+        const isResetYLimit = isFetchCurrentTruth;  // passed to updatePlot(). fetching truth means we need to recalculate y limits
         if (isFetchFirst) {
             const promises = [this.fetchAsOfTruth(), this.fetchForecasts()];
             if (isFetchCurrentTruth) {
                 promises.push(this.fetchCurrentTruth());
             }
-            console.log(`fetchDataUpdatePlot(${isFetchFirst}, ${isFetchCurrentTruth}, ${isPreserveYLimit}): waiting on promises`);
+            console.debug(`fetchDataUpdatePlot(${isFetchFirst}, ${isFetchCurrentTruth}): waiting on promises`);
             const $plotyDiv = $('#ploty_div');
             if (this.isIndicateRedraw) {
                 $plotyDiv.fadeTo(0, 0.25);
             }
             Promise.all(promises).then((values) => {
-                console.log(`fetchDataUpdatePlot(${isFetchFirst}, ${isFetchCurrentTruth}, ${isPreserveYLimit}): Promise.all() done. updating plot`, values);
+                console.debug(`fetchDataUpdatePlot(${isFetchFirst}, ${isFetchCurrentTruth}): Promise.all() done. updating plot`, values);
 
                 // update user ensemble model if any
                 if (this.isUemEnabled && this.state.models.includes(USER_ENSEMBLE_MODEL.name)) {
                     try {
                         this.state.forecasts[USER_ENSEMBLE_MODEL.name] = _calcUemForecasts(USER_ENSEMBLE_MODEL.models, this.state.forecasts);  // replaces if present
                         USER_ENSEMBLE_MODEL.lastError = null;
-                        console.log('fetchDataUpdatePlot(): forecasts:', this.state.forecasts[USER_ENSEMBLE_MODEL.name]);
+                        console.debug('fetchDataUpdatePlot(): forecasts:', this.state.forecasts[USER_ENSEMBLE_MODEL.name]);
                     } catch (error) {
                         USER_ENSEMBLE_MODEL.lastError = error;
-                        console.warn(`fetchDataUpdatePlot(): error calling _calcUemForecasts(): ${error}`);
+                        console.error(`fetchDataUpdatePlot(): error calling _calcUemForecasts(): ${error}`);
                     }
                 }
 
                 this.updateModelsList();
-                this.updatePlot(isPreserveYLimit);
+                this.updatePlot(isResetYLimit);
                 if (this.isIndicateRedraw) {
                     $plotyDiv.fadeTo(0, 1.0);
                 }
             });
         } else {
-            console.log(`fetchDataUpdatePlot(${isFetchFirst}, ${isFetchCurrentTruth}, ${isPreserveYLimit}): updating plot`);
-            this.updatePlot(isPreserveYLimit);
+            console.debug(`fetchDataUpdatePlot(${isFetchFirst}, ${isFetchCurrentTruth}): updating plot`);
+            this.updatePlot(isResetYLimit);
         }
     },
     fetchCurrentTruth() {
@@ -978,7 +985,7 @@ const App = {
             .then((data) => {
                 this.state.current_truth = data;
             })
-            .catch(error => console.log(`fetchCurrentTruth(): error: ${error.message}`));
+            .catch(error => console.error(`fetchCurrentTruth(): error: ${error.message}`));
     },
     fetchAsOfTruth() {
         this.state.as_of_truth = [];  // clear in case of error
@@ -988,7 +995,7 @@ const App = {
             .then((data) => {
                 this.state.as_of_truth = data;
             })
-            .catch(error => console.log(`fetchAsOfTruth(): error: ${error.message}`));
+            .catch(error => console.error(`fetchAsOfTruth(): error: ${error.message}`));
     },
     fetchForecasts() {
         this.state.forecasts = {};  // clear in case of error
@@ -998,7 +1005,7 @@ const App = {
             .then((data) => {
                 this.state.forecasts = data;
             })
-            .catch(error => console.log(`fetchForecasts(): error: ${error.message}`));
+            .catch(error => console.error(`fetchForecasts(): error: ${error.message}`));
     },
 
     //
@@ -1030,10 +1037,10 @@ const App = {
         try {
             this.state.forecasts[USER_ENSEMBLE_MODEL.name] = _calcUemForecasts(componentModels, this.state.forecasts);  // replaces if present
             USER_ENSEMBLE_MODEL.lastError = null;
-            console.log('addUserEnsembleModel(): forecasts:', this.state.forecasts[USER_ENSEMBLE_MODEL.name]);
+            console.debug('addUserEnsembleModel(): forecasts:', this.state.forecasts[USER_ENSEMBLE_MODEL.name]);
         } catch (error) {
             USER_ENSEMBLE_MODEL.lastError = error;
-            console.warn(`addUserEnsembleModel(): error calling _calcUemForecasts(): ${error}`);
+            console.error(`addUserEnsembleModel(): error calling _calcUemForecasts(): ${error}`);
         }
 
         if (!this.state.models.includes(USER_ENSEMBLE_MODEL.name)) {
@@ -1044,7 +1051,7 @@ const App = {
         }
         USER_ENSEMBLE_MODEL.models.length = 0;  // quick way to clear an array
         USER_ENSEMBLE_MODEL.models.push(...componentModels);
-        console.log('addUserEnsembleModel(): created:', USER_ENSEMBLE_MODEL.name, USER_ENSEMBLE_MODEL.models);
+        console.debug('addUserEnsembleModel(): created:', USER_ENSEMBLE_MODEL.name, USER_ENSEMBLE_MODEL.models);
     },
 
     /**
@@ -1065,9 +1072,9 @@ const App = {
     /**
      * Updates the plot, preserving any current xaxis range limit, and optionally any current yaxis range limit
      *
-     * @param isPreserveYLimit true if should preserve any yaxis range limit currently set
+     * @param isResetYLimit true if should reset any yaxis range limit currently set
      */
-    updatePlot(isPreserveYLimit) {
+    updatePlot(isResetYLimit) {
         const plotyDiv = document.getElementById('ploty_div');
         const data = this.getPlotlyData();
         let layout = this.getPlotlyLayout();
@@ -1075,26 +1082,29 @@ const App = {
             layout = {title: {text: 'No Visualization Data Found'}};
         }
 
-        // before updating the plot we preserve the xaxis rangeslider range limit ("zoom") by retrieving it, redrawing
-        // the plot, and then re-laying it out. NB: the default xaxis.range seems to be [-1, 6] when updating for the
-        // first time (yaxis = [-1, 4]), so we check for the range being those arrays to determine whether to preserve
-        // or not
-        var currXAxisRange = plotyDiv.layout.xaxis.range;
-        var currYAxisRange = plotyDiv.layout.yaxis.range;
-        var isXAxisRangeDefault = ((currXAxisRange.length === 2) && (currXAxisRange[0] === -1) && (currXAxisRange[1] === 6));
-        var isYAxisRangeDefault = ((currYAxisRange.length === 2) && (currYAxisRange[0] === -1) && (currYAxisRange[1] === 4));
+        // before updating the plot we store the xaxis and yaxis ranges so we can relayout using them if need be.
+        // NB: the default xaxis.range seems to be [-1, 6] when updating for the first time (yaxis.range = [-1, 4]).
+        // there might be a better way to determine this.
+        const currXAxisRange = plotyDiv.layout.xaxis.range;
+        const currYAxisRange = plotyDiv.layout.yaxis.range;
+        const isXAxisRangeDefault = ((currXAxisRange.length === 2) && (currXAxisRange[0] === -1) && (currXAxisRange[1] === 6));
+        const isYAxisRangeDefault = ((currYAxisRange.length === 2) && (currYAxisRange[0] === -1) && (currYAxisRange[1] === 4));
         Plotly.react(plotyDiv, data, layout);
+
         if (!isXAxisRangeDefault) {
             Plotly.relayout(plotyDiv, 'xaxis.range', currXAxisRange);
-        }
-        if (isPreserveYLimit && !isYAxisRangeDefault) {
-            Plotly.relayout(plotyDiv, 'yaxis.range', currYAxisRange);
-        }
-
-        // optionally handle initial_xaxis_range
-        if (isXAxisRangeDefault && (this.state.initial_xaxis_range != null)) {
+        } else if (this.state.initial_xaxis_range != null) {
             Plotly.relayout(plotyDiv, 'xaxis.range', this.state.initial_xaxis_range);
         }
+
+        if (!isResetYLimit) {
+            if (!isYAxisRangeDefault) {
+                Plotly.relayout(plotyDiv, 'yaxis.range', currYAxisRange);
+            } else if (this.state.initial_yaxis_range != null) {
+                Plotly.relayout(plotyDiv, 'yaxis.range', this.state.initial_yaxis_range);
+            }
+        }
+
         this.initializeDateRangePicker();  // b/c jquery binding is apparently lost with any Plotly.*() call
     },
     getPlotlyLayout() {

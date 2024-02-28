@@ -20,6 +20,7 @@ const covid19ForecastsVizTestOptions = {
     "initial_target_var": "week_ahead_incident_deaths",
     "initial_task_ids": {"unit": "48"},
     "initial_xaxis_range": null,
+    "initial_yaxis_range": null,
     "intervals": ["0%", "50%", "95%"],
     "models": ["COVIDhub-ensemble", "COVIDhub-baseline"],
     "target_variables": [{

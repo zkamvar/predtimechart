@@ -50,12 +50,25 @@
       "minProperties": 1
     },
     "initial_xaxis_range": {
-      "description": "optional `array` of two dates in 'YYYY-MM-DD' format that specify the initial xaxis range to use. To not initialize the range, either don't pass this key or pass `null` for its value",
+      "description": "`array` of two dates in 'YYYY-MM-DD' format that specify the initial xaxis range to use. To not initialize the range, pass `null` for its value",
       "type": ["array", "null"],
       "minItems": 2,
       "maxItems": 2,
       "uniqueItems": true,
       "items": {"type": "string", "format": "date"}
+    },
+    "initial_yaxis_range": {
+      "description": "`array` of two values (format depends on outcome variable) that specify the initial yaxis range to use. To not initialize the range, pass `null` for its value",
+      "type": ["array", "null"],
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "oneOf": [
+          {"type": "string"},
+          {"type": "number"}
+        ]
+      }
     },
     "intervals": {
       "description": "`array` of one or more strings of the format '<integer>%' between '0%' and '100%' inclusive, representing percentages. Currently only '50%' and '95%' are used (purpose: TBD)",
@@ -125,6 +138,5 @@
     }
   },
   "required": ["available_as_ofs", "current_date", "disclaimer", "initial_as_of", "initial_checked_models",
-    "initial_interval", "initial_target_var", "initial_task_ids", "initial_xaxis_range", "intervals", "models",
-    "target_variables", "task_ids"]
-}
+    "initial_interval", "initial_target_var", "initial_task_ids", "intervals", "models", "target_variables",
+    "task_ids"]}
